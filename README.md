@@ -171,7 +171,7 @@ class SearchResult:
 - Full document text is not returned, only highlighted snippets
 - Download the PDF from `url` to get full content
 - Large documents are chunked; the same PDF may appear multiple times with different `chunkIndex` values
-- No authentication required, but the client sets `justiceGovAgeVerified=true` cookie
+- No authentication required (just needs `Referer` header)
 
 ## Legal Considerations
 

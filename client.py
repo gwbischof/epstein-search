@@ -60,8 +60,6 @@ class EpsteinClient:
             "Accept": "application/json",
         })
 
-        self.session.cookies.set("justiceGovAgeVerified", "true", domain="www.justice.gov")
-
     def search(self, query: str, limit: Optional[int] = None) -> list[SearchResult]:
         """
         Search the Epstein Library.
