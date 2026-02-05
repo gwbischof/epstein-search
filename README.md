@@ -1,6 +1,6 @@
 # epstein-search
 
-Python and CLI client for the DOJ Epstein Library search API. Performs full-text search across 100,000+ indexed PDF documents. Returns metadata (filename, URL, page range) and highlighted text snippets containing matches—not the full PDF content. Download PDFs directly from the returned URLs to access complete documents.
+Python and CLI client for the DOJ Epstein Library search API.
 
 ## Installation
 
