@@ -28,9 +28,6 @@ es "epstein" --json > results.json
 # Only output URLs (useful for piping to wget/curl)
 es "maxwell" --urls-only
 
-# Show highlighted text snippets
-es "flight logs" --highlights
-
 # Check version
 es --version
 ```
@@ -39,7 +36,6 @@ Options:
 - `--limit, -l` - Maximum results (default: 10, use 0 for all)
 - `--json, -j` - Output as JSON
 - `--urls-only, -u` - Only output PDF URLs
-- `--highlights, -H` - Show highlighted text snippets with matches
 - `--version, -v` - Show version
 
 ## Python Usage
