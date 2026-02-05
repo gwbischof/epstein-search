@@ -3,9 +3,9 @@
 CLI for the DOJ Epstein Library search.
 
 Usage:
-    python cli.py "search query"
-    python cli.py "maxwell" --limit 50
-    python cli.py "flight logs" --json
+    es "search query"
+    es "maxwell" -n 100
+    es "flight logs" --json
 """
 
 import argparse
@@ -24,10 +24,9 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-    python cli.py "maxwell"
-    python cli.py "flight logs" --limit 50
-    python cli.py "epstein" --json > results.json
-    python cli.py "EFTA00420915" --limit 1
+    es "maxwell"
+    es "flight logs" -n 100
+    es "epstein" --json > results.json
         """
     )
     parser.add_argument("query", nargs="?", help="Search query")
@@ -37,10 +36,16 @@ Examples:
         version="epstein-search 0.1.0"
     )
     parser.add_argument(
-        "--limit", "-l",
+        "-n",
         type=int,
-        default=10,
-        help="Maximum number of results (default: 10, use 0 for all)"
+        default=50,
+        help="Number of results (default: 50, use 0 for all)"
+    )
+    parser.add_argument(
+        "-s", "--skip",
+        type=int,
+        default=0,
+        help="Skip first N results (default: 0)"
     )
     parser.add_argument(
         "--json", "-j",
@@ -55,9 +60,8 @@ Examples:
         sys.exit(1)
 
     client = EpsteinClient()
-
-    limit = args.limit if args.limit > 0 else None
-    results = client.search(args.query, limit=limit)
+    n = args.n if args.n > 0 else None
+    results = client.search(args.query, n=n, skip=args.skip)
 
     if args.json:
         output = [r.raw for r in results if r.raw]

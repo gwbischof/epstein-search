@@ -60,15 +60,16 @@ class EpsteinClient:
             "Accept": "application/json",
         })
 
-    def search(self, query: str, limit: Optional[int] = None) -> list[SearchResult]:
+    def search(self, query: str, n: Optional[int] = None, skip: int = 0) -> list[SearchResult]:
         """
         Search the Epstein Library.
 
         Args:
             query: Search terms (e.g., "flight logs", "Maxwell")
-            limit: Maximum number of results to return.
-                   None = return all results (may be slow for large result sets)
-                   Default API page size is 10.
+            n: Number of results to return.
+               None = return all results (may be slow for large result sets)
+               Default API page size is 10.
+            skip: Number of results to skip (default: 0)
 
         Returns:
             List of SearchResult objects
@@ -79,6 +80,8 @@ class EpsteinClient:
         url = f"{self.BASE_URL}{self.SEARCH_ENDPOINT}"
         results = []
         page = 0
+        fetched = 0
+        fetch_limit = (skip + n) if n else None
 
         while True:
             params = {"keys": query, "page": page}
@@ -104,10 +107,12 @@ class EpsteinClient:
                     score=hit.get("_score"),
                     raw=hit,
                 )
-                results.append(result)
+                fetched += 1
+                if fetched > skip:
+                    results.append(result)
 
-                if limit and len(results) >= limit:
-                    return results[:limit]
+                if fetch_limit and fetched >= fetch_limit:
+                    return results
 
             # Check if more pages
             total_info = hits_data.get("total", {})
@@ -124,8 +129,8 @@ def main():
     client = EpsteinClient()
 
     # Get 50 results
-    print("Searching for 'flight logs' (limit=50)...")
-    results = client.search("flight logs", limit=50)
+    print("Searching for 'flight logs' (n=50)...")
+    results = client.search("flight logs", n=50)
     print(f"Got {len(results)} results\n")
 
     for r in results[:5]:

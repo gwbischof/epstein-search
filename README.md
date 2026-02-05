@@ -16,24 +16,21 @@ uv tool install ./epstein-search
 ## CLI
 
 ```bash
-# Basic search
+# Basic search (returns 50 results by default)
 es "maxwell"
 
-# Limit results
-es "flight logs" --limit 50
+# Specify number of results
+es "flight logs" -n 100
 
 # Output as JSON
 es "epstein" --json > results.json
-
-# Only output URLs (useful for piping to wget/curl)
-es "maxwell" --urls-only
 
 # Check version
 es --version
 ```
 
 Options:
-- `--limit, -l` - Maximum results (default: 10, use 0 for all)
+- `-n` - Number of results (default: 50, use 0 for all)
 - `--json, -j` - Output results as JSON
 - `--version, -v` - Show version
 
@@ -50,10 +47,13 @@ from client import EpsteinClient
 client = EpsteinClient()
 
 # Get 10 results
-results = client.search("Maxwell", limit=10)
+results = client.search("Maxwell", n=10)
 
 # Get 100 results
-results = client.search("flight logs", limit=100)
+results = client.search("flight logs", n=100)
+
+# Skip first 50, get next 100
+results = client.search("flight logs", n=100, skip=50)
 
 # Get ALL results (no limit - may be slow for broad queries)
 results = client.search("Trump")
