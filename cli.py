@@ -54,11 +54,6 @@ Examples:
         action="store_true",
         help="Only output PDF URLs (one per line)"
     )
-    parser.add_argument(
-        "--highlights", "-H",
-        action="store_true",
-        help="Show highlighted text snippets with matches"
-    )
 
     args = parser.parse_args()
 
@@ -83,14 +78,14 @@ Examples:
                 "chunk_index": r.chunk_index,
                 "total_chunks": r.total_chunks,
             }
-            if args.highlights and r.raw:
+            if r.raw:
                 item["highlights"] = r.raw.get("highlight", {}).get("content", [])
             output.append(item)
         print(json.dumps(output, indent=2))
     elif args.urls_only:
         for r in results:
             print(encode_url(r.url))
-    elif args.highlights:
+    else:
         for r in results:
             print(encode_url(r.url))
             if r.raw:
@@ -98,14 +93,6 @@ Examples:
                 for h in highlights:
                     text = h.replace("\n", " ").strip()
                     print(f"  {text}")
-            print()
-    else:
-        print(f"Found {len(results)} results for '{args.query}'\n")
-        for r in results:
-            print(f"{r.filename}")
-            print(f"  URL: {encode_url(r.url)}")
-            if r.start_page:
-                print(f"  Pages: {r.start_page}-{r.end_page}")
             print()
 
 
