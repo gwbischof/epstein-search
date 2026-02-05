@@ -1,0 +1,22 @@
+[project]
+name = "epstein-search"
+version = "0.1.0"
+description = "Python and CLI client for the DOJ Epstein Library search API"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "requests>=2.32.5",
+]
+
+[project.urls]
+Repository = "https://github.com/gwbischof/epstein-search"
+
+[project.scripts]
+es = "cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+include = ["client.py", "cli.py"]
