@@ -34,8 +34,7 @@ es --version
 
 Options:
 - `--limit, -l` - Maximum results (default: 10, use 0 for all)
-- `--json, -j` - Output as JSON
-- `--urls-only, -u` - Only output PDF URLs
+- `--json, -j` - Output results as JSON
 - `--version, -v` - Show version
 
 ## Python Usage
