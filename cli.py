@@ -67,20 +67,7 @@ Examples:
     results = client.search(args.query, limit=limit)
 
     if args.json:
-        output = []
-        for r in results:
-            item = {
-                "document_id": r.document_id,
-                "filename": r.filename,
-                "url": encode_url(r.url),
-                "start_page": r.start_page,
-                "end_page": r.end_page,
-                "chunk_index": r.chunk_index,
-                "total_chunks": r.total_chunks,
-            }
-            if r.raw:
-                item["highlights"] = r.raw.get("highlight", {}).get("content", [])
-            output.append(item)
+        output = [r.raw for r in results if r.raw]
         print(json.dumps(output, indent=2))
     elif args.urls_only:
         for r in results:
