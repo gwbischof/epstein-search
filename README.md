@@ -1,5 +1,7 @@
 # epstein-search
 
+> **Content Warning:** This tool searches documents released under the Epstein Files Transparency Act. Results may contain disturbing textual descriptions of sexual abuse. Users must be 18 or older.
+
 Python and CLI client for the DOJ Epstein Library search API.
 
 ## Contributors
