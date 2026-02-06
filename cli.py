@@ -78,6 +78,12 @@ Examples:
         default=None,
         help="OpenRouter model ID for --events (default: deepseek/deepseek-chat-v3-0324:free)"
     )
+    parser.add_argument(
+        "-w", "--workers",
+        type=int,
+        default=10,
+        help="Number of parallel workers for --events (default: 10)"
+    )
 
     args = parser.parse_args()
 
@@ -98,7 +104,7 @@ Examples:
         if args.json:
             print("[", flush=True)
             first = True
-            for r in client._extract_events(client._extract_text(results), model=args.model, query=args.query):
+            for r in client._extract_events(client._extract_text(results), model=args.model, query=args.query, workers=args.workers):
                 if r.events:
                     entry = {"filename": r.filename, "url": encode_url(r.url), "events": [e.model_dump() for e in r.events]}
                     if not first:
@@ -107,7 +113,7 @@ Examples:
                     first = False
             print("\n]", flush=True)
         else:
-            for r in client._extract_events(client._extract_text(results), model=args.model, query=args.query):
+            for r in client._extract_events(client._extract_text(results), model=args.model, query=args.query, workers=args.workers):
                 print(f"\n--- {r.filename} " + "-" * (55 - len(r.filename)))
                 print(encode_url(r.url))
                 if r.events:

@@ -73,6 +73,7 @@ Options:
 - `-t, --text` - Download PDFs in memory and extract full text
 - `-e, --events` - Extract events with timestamps from PDFs using AI
 - `-m, --model` - OpenRouter model ID for `--events` (default: `deepseek/deepseek-chat-v3-0324`)
+- `-w, --workers` - Number of parallel workers for `--events` (default: 10)
 
 Event extraction (`-e`) uses [OpenRouter](https://openrouter.ai/) to send PDF text to an LLM. Set the `OPENROUTER_API_KEY` environment variable before using it. Want support for another provider? [Open an issue](https://github.com/gwbischof/epstein-search/issues).
 - `-c, --count` - Only show total result count (fast, single API call)
