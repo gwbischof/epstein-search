@@ -4,7 +4,7 @@ Python and CLI client for the DOJ Epstein Library search API.
 
 ## Contributors
 
-[![CultriX-Github](https://img.shields.io/badge/CultriX--Github-contributor-blue?logo=github)](https://github.com/CultriX-Github)
+⭐ [@CultriX-Github](https://github.com/CultriX-Github) - Thanks for leveling up this tool!
 
 ## Installation
 
