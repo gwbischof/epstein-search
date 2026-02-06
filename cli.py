@@ -59,6 +59,11 @@ Examples:
         action="store_true",
         help="Output results as JSON"
     )
+    parser.add_argument(
+        "-c", "--count",
+        action="store_true",
+        help="Only show total result count"
+    )
 
     args = parser.parse_args()
 
@@ -67,6 +72,11 @@ Examples:
         sys.exit(1)
 
     client = EpsteinClient()
+
+    if args.count:
+        print(client.count(args.query))
+        return
+
     n = args.n if args.n > 0 else None
     results = client.search(args.query, n=n, skip=args.skip)
 
@@ -74,32 +84,25 @@ Examples:
         output = [r.raw for r in results if r.raw]
         print(json.dumps(output, indent=2))
     elif args.verbose:
+        from dataclasses import fields
         for r in results:
-            if r.raw:
-                source = r.raw.get("_source", {})
-                filename = source.get('ORIGIN_FILE_NAME', 'unknown')
-                print(f"\n\n--- {filename} " + "-" * (55 - len(filename)) + "\n")
-                # Find max key length for alignment
-                max_len = max(len(k) for k in source.keys()) if source else 0
-                for key, value in source.items():
-                    print(f"{key}:{' ' * (max_len - len(key) + 1)}{value}")
-                score = r.raw.get('_score')
-                if score:
-                    print(f"{'_score'}:{' ' * (max_len - len('_score') + 1)}{score}")
-                highlights = r.raw.get("highlight", {}).get("content", [])
-                if highlights:
-                    print("highlights:")
-                    for h in highlights:
-                        text = h.replace("\n", " ").strip()
-                        print(f"  {text}")
-            else:
-                print(encode_url(r.url))
+            print(f"\n\n--- {r.filename} " + "-" * (55 - len(r.filename)) + "\n")
+            field_names = [f.name for f in fields(r) if f.name not in ('raw', 'highlights')]
+            max_len = max(len(name) for name in field_names)
+            for name in field_names:
+                value = getattr(r, name)
+                if name == 'url' and value:
+                    value = encode_url(value)
+                print(f"{name}:{' ' * (max_len - len(name) + 1)}{value}")
+            if r.highlights:
+                print("highlights:")
+                for h in r.highlights:
+                    print(f"  {h.replace(chr(10), ' ').strip()}")
     else:
         for r in results:
             print(encode_url(r.url))
-            if r.raw:
-                highlights = r.raw.get("highlight", {}).get("content", [])
-                for h in highlights:
+            if r.highlights:
+                for h in r.highlights:
                     text = h.replace("\n", " ").strip()
                     print(f"  {text}")
             print()

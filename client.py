@@ -11,23 +11,50 @@ from dataclasses import dataclass
 
 
 @dataclass
-class SearchResult:
-    """A single search result from the DOJ Epstein Library."""
+class Record:
+    """A record from the DOJ Epstein Library."""
+    # Core identifiers
     document_id: str
     filename: str
     url: str
+    key: Optional[str] = None
+    bucket: Optional[str] = None
+
+    # Document info
+    content_type: Optional[str] = None
+    file_size: Optional[int] = None
+    total_words: Optional[int] = None
+    total_characters: Optional[int] = None
+
+    # Page info
     start_page: Optional[int] = None
     end_page: Optional[int] = None
+
+    # Chunk info
     chunk_index: Optional[int] = None
     total_chunks: Optional[int] = None
-    content_type: Optional[str] = None
-    text: Optional[str] = None
+    chunk_size: Optional[int] = None
+    char_start: Optional[int] = None
+    char_end: Optional[int] = None
+    is_chunked: Optional[bool] = None
+
+    # Timestamps
+    processed_at: Optional[str] = None
+    indexed_at: Optional[str] = None
+    source: Optional[str] = None
+
+    # Search result fields
     score: Optional[float] = None
+    highlights: Optional[list[str]] = None
     raw: dict = None
 
     def __repr__(self):
         pages = f" (pages {self.start_page}-{self.end_page})" if self.start_page else ""
-        return f"SearchResult({self.filename}{pages})"
+        return f"Record({self.filename}{pages})"
+
+
+# Alias for backwards compatibility
+SearchResult = Record
 
 
 class EpsteinClient:
@@ -70,9 +97,16 @@ class EpsteinClient:
         })
 
 
-    def search(self, query: str, n: Optional[int] = None, skip: int = 0) -> list[SearchResult]:
+    def search(self, query: str, n: Optional[int] = None, skip: int = 0) -> list[Record]:
         """
         Search the Epstein Library.
+
+        Supports advanced search patterns:
+        - Basic search: "flight logs" (matches documents containing these terms)
+        - Exact phrase: '"flight logs"' (matches exact phrase)
+        - Wildcard *: "fl*ght", "maxw*" (matches any characters)
+        - Wildcard ?: "flight?" (matches single character)
+        - Required terms: "+flight +logs" (both terms must appear)
 
         Args:
             query: Search terms (e.g., "flight logs", "Maxwell")
@@ -82,7 +116,7 @@ class EpsteinClient:
             skip: Number of results to skip (default: 0)
 
         Returns:
-            List of SearchResult objects
+            List of Record objects
 
         Raises:
             requests.HTTPError: If the request fails
@@ -104,17 +138,30 @@ class EpsteinClient:
 
             for hit in hits:
                 source = hit.get("_source", {})
-                result = SearchResult(
+                highlights = hit.get("highlight", {}).get("content", [])
+                result = Record(
                     document_id=source.get("documentId", ""),
                     filename=source.get("ORIGIN_FILE_NAME", ""),
                     url=source.get("ORIGIN_FILE_URI", ""),
+                    key=source.get("key"),
+                    bucket=source.get("bucket"),
+                    content_type=source.get("contentType"),
+                    file_size=source.get("fileSize"),
+                    total_words=source.get("totalWords"),
+                    total_characters=source.get("totalCharacters"),
                     start_page=source.get("startPage"),
                     end_page=source.get("endPage"),
                     chunk_index=source.get("chunkIndex"),
                     total_chunks=source.get("totalChunks"),
-                    content_type=source.get("contentType"),
-                    text=source.get("text", source.get("content")),
+                    chunk_size=source.get("chunkSize"),
+                    char_start=source.get("charStart"),
+                    char_end=source.get("charEnd"),
+                    is_chunked=source.get("isChunked"),
+                    processed_at=source.get("processedAt"),
+                    indexed_at=source.get("indexedAt"),
+                    source=source.get("source"),
                     score=hit.get("_score"),
+                    highlights=highlights if highlights else None,
                     raw=hit,
                 )
                 fetched += 1
@@ -133,6 +180,25 @@ class EpsteinClient:
             page += 1
 
         return results
+
+    def count(self, query: str) -> int:
+        """
+        Get the total number of results for a query.
+
+        Args:
+            query: Search terms
+
+        Returns:
+            Total number of matching documents
+        """
+        url = f"{self.BASE_URL}{self.SEARCH_ENDPOINT}"
+        params = {"keys": query, "page": 0}
+        response = self.session.get(url, params=params)
+        response.raise_for_status()
+
+        data = response.json()
+        total_info = data.get("hits", {}).get("total", {})
+        return total_info.get("value", 0) if isinstance(total_info, dict) else total_info
 
 def main():
     """Example usage."""

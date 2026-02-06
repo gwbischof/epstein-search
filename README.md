@@ -2,6 +2,10 @@
 
 Python and CLI client for the DOJ Epstein Library search API.
 
+## Contributors
+
+Shoutout to [@CultriX-Github](https://github.com/CultriX-Github) for helping make this tool better.
+
 ## Installation
 
 ```bash
@@ -25,6 +29,9 @@ es "flight logs" -n 100
 # Verbose output (show all metadata)
 es "trump" -n 5 -v
 
+# Get total count without fetching results
+es "epstein" -c
+
 # Output as JSON
 es "epstein" --json > results.json
 
@@ -35,6 +42,7 @@ es --version
 Options:
 - `-n` - Number of results (default: 50, use 0 for all)
 - `-v, --verbose` - Show all metadata fields for each result
+- `-c, --count` - Only show total result count (fast, single API call)
 - `-j, --json` - Output results as JSON
 - `-V, --version` - Show version
 
@@ -74,6 +82,10 @@ results = client.search("Trump")
 
 for r in results:
     print(r.filename, r.url)
+
+# Get total count for a query (without fetching all results)
+count = client.count("Maxwell")
+print(f"Total results: {count}")
 ```
 
 ## API Endpoint
