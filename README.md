@@ -22,6 +22,9 @@ es "maxwell"
 # Specify number of results
 es "flight logs" -n 100
 
+# Verbose output (show all metadata)
+es "trump" -n 5 -v
+
 # Output as JSON
 es "epstein" --json > results.json
 
@@ -31,8 +34,19 @@ es --version
 
 Options:
 - `-n` - Number of results (default: 50, use 0 for all)
-- `--json, -j` - Output results as JSON
-- `--version, -v` - Show version
+- `-v, --verbose` - Show all metadata fields for each result
+- `-j, --json` - Output results as JSON
+- `-V, --version` - Show version
+
+## Updating
+
+```bash
+# Reinstall from GitHub
+uv tool install --force --reinstall epstein-search --from git+https://github.com/gwbischof/epstein-search
+
+# Or from a local clone
+uv tool install --force --reinstall epstein-search --from /path/to/epstein-search
+```
 
 ## Python Usage
 
