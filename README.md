@@ -89,6 +89,11 @@ results = client.search("Trump")
 for r in results:
     print(r.filename, r.url)
 
+# Search and extract full text from PDFs (downloaded in memory)
+results = client.search("flight logs", n=1, text=True)
+for r in results:
+    print(r.text)
+
 # Get total count for a query (without fetching all results)
 count = client.count("Maxwell")
 print(f"Total results: {count}")
@@ -176,31 +181,55 @@ Each search result contains:
 | `processedAt`, `indexedAt` | Timestamps |
 | `highlight.content` | Text snippets with `<em>` tags around matches |
 
-## SearchResult Object
+## Record Object
 
-The client parses results into `SearchResult` objects:
+The client parses results into `Record` objects:
 
 ```python
 @dataclass
-class SearchResult:
+class Record:
+    # Core identifiers
     document_id: str
     filename: str
     url: str
-    start_page: Optional[int]
-    end_page: Optional[int]
-    chunk_index: Optional[int]
-    total_chunks: Optional[int]
-    content_type: Optional[str]
-    text: Optional[str]
-    score: Optional[float]
-    raw: dict  # Full API response for this hit
+    key: Optional[str] = None
+    bucket: Optional[str] = None
+
+    # Document info
+    content_type: Optional[str] = None
+    file_size: Optional[int] = None
+    total_words: Optional[int] = None
+    total_characters: Optional[int] = None
+
+    # Page info
+    start_page: Optional[int] = None
+    end_page: Optional[int] = None
+
+    # Chunk info
+    chunk_index: Optional[int] = None
+    total_chunks: Optional[int] = None
+    chunk_size: Optional[int] = None
+    char_start: Optional[int] = None
+    char_end: Optional[int] = None
+    is_chunked: Optional[bool] = None
+
+    # Timestamps
+    processed_at: Optional[str] = None
+    indexed_at: Optional[str] = None
+    source: Optional[str] = None
+
+    # Search result fields
+    score: Optional[float] = None
+    highlights: Optional[list[str]] = None
+    text: Optional[str] = None        # Populated when text=True
+    raw: dict = None                   # Full API response for this hit
 ```
 
 ## Notes
 
 - The API returns 10 results per page; the client automatically paginates
-- Full document text is not returned, only highlighted snippets
-- Download the PDF from `url` to get full content
+- By default only highlighted snippets are returned; use `text=True` to download and extract full PDF text
+- You can also download the PDF directly from `url`
 - Large documents are chunked; the same PDF may appear multiple times with different `chunkIndex` values
 - No authentication required (just needs `Referer` header)
 
