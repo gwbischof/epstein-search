@@ -10,6 +10,8 @@ Python and CLI client for the DOJ Epstein Library search API.
 
 ## Installation
 
+The easiest way to install this tool may be to ask your AI coding agent to do it for you. It can install and use the CLI based on the instructions in this README.
+
 ```bash
 # Install the `es` command globally
 uv tool install git+https://github.com/gwbischof/epstein-search
