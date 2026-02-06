@@ -6,6 +6,7 @@ This client provides a clean interface to query it.
 """
 
 import requests
+from io import BytesIO
 from typing import Optional
 from dataclasses import dataclass
 
@@ -95,6 +96,7 @@ class EpsteinClient:
             "Sec-Fetch-Mode": "cors",
             "Sec-Fetch-Site": "same-origin",
         })
+        self.session.cookies.set("justiceGovAgeVerified", "true", domain=".justice.gov")
 
 
     def search(self, query: str, n: Optional[int] = None, skip: int = 0) -> list[Record]:
@@ -199,6 +201,34 @@ class EpsteinClient:
         data = response.json()
         total_info = data.get("hits", {}).get("total", {})
         return total_info.get("value", 0) if isinstance(total_info, dict) else total_info
+
+    def text(self, query: str, n: int = 1, skip: int = 0) -> list[tuple[Record, str]]:
+        """
+        Search for documents and extract their text content in memory.
+
+        Args:
+            query: Search term or filename (e.g., "trump", "EFTA02185794.pdf")
+            n: Number of documents to extract text from (default: 1)
+            skip: Number of results to skip (default: 0)
+
+        Returns:
+            List of (Record, text) tuples
+        """
+        import pdfplumber
+
+        results = self.search(query, n=n, skip=skip)
+        if not results:
+            raise FileNotFoundError(f"No results for: {query}")
+
+        out = []
+        for r in results:
+            response = self.session.get(r.url)
+            response.raise_for_status()
+            with pdfplumber.open(BytesIO(response.content)) as pdf:
+                text = "\n".join(page.extract_text() or "" for page in pdf.pages)
+            out.append((r, text))
+        return out
+
 
 def main():
     """Example usage."""

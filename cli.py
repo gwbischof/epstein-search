@@ -64,6 +64,11 @@ Examples:
         action="store_true",
         help="Only show total result count"
     )
+    parser.add_argument(
+        "-t", "--text",
+        action="store_true",
+        help="Download PDFs and extract text"
+    )
 
     args = parser.parse_args()
 
@@ -78,6 +83,15 @@ Examples:
         return
 
     n = args.n if args.n > 0 else None
+
+    if args.text:
+        results = client.text(args.query, n=n or 1, skip=args.skip)
+        for r, text in results:
+            print(f"\n\n--- {r.filename} " + "-" * (55 - len(r.filename)))
+            print(encode_url(r.url) + "\n")
+            print(text)
+        return
+
     results = client.search(args.query, n=n, skip=args.skip)
 
     if args.json:
