@@ -33,9 +33,14 @@ Examples:
     )
     parser.add_argument("query", nargs="?", help="Search query")
     parser.add_argument(
-        "--version", "-v",
+        "--version", "-V",
         action="version",
         version="epstein-search 0.1.0"
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Print all metadata for each result"
     )
     parser.add_argument(
         "-n",
@@ -68,6 +73,27 @@ Examples:
     if args.json:
         output = [r.raw for r in results if r.raw]
         print(json.dumps(output, indent=2))
+    elif args.verbose:
+        for r in results:
+            if r.raw:
+                source = r.raw.get("_source", {})
+                filename = source.get('ORIGIN_FILE_NAME', 'unknown')
+                print(f"\n\n--- {filename} " + "-" * (55 - len(filename)) + "\n")
+                # Find max key length for alignment
+                max_len = max(len(k) for k in source.keys()) if source else 0
+                for key, value in source.items():
+                    print(f"{key}:{' ' * (max_len - len(key) + 1)}{value}")
+                score = r.raw.get('_score')
+                if score:
+                    print(f"{'_score'}:{' ' * (max_len - len('_score') + 1)}{score}")
+                highlights = r.raw.get("highlight", {}).get("content", [])
+                if highlights:
+                    print("highlights:")
+                    for h in highlights:
+                        text = h.replace("\n", " ").strip()
+                        print(f"  {text}")
+            else:
+                print(encode_url(r.url))
     else:
         for r in results:
             print(encode_url(r.url))
