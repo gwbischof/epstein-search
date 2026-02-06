@@ -124,7 +124,14 @@ Examples:
     results = client.search(args.query, n=n, skip=args.skip)
 
     if args.json:
-        output = [r.raw for r in results if r.raw]
+        output = []
+        for r in results:
+            if r.raw:
+                raw = r.raw.copy()
+                src = raw.get("_source", {})
+                if "ORIGIN_FILE_URI" in src:
+                    raw["_source"] = {**src, "ORIGIN_FILE_URI": encode_url(src["ORIGIN_FILE_URI"])}
+                output.append(raw)
         print(json.dumps(output, indent=2))
     elif args.verbose:
         from dataclasses import fields
