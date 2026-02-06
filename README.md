@@ -32,6 +32,9 @@ es "trump" -n 5 -v
 # Get total count without fetching results
 es "epstein" -c
 
+# Extract full text from matching PDFs (downloaded and processed in memory)
+es "flight logs" -t -n 1
+
 # Output as JSON
 es "epstein" --json > results.json
 
@@ -42,6 +45,7 @@ es --version
 Options:
 - `-n` - Number of results (default: 50, use 0 for all)
 - `-v, --verbose` - Show all metadata fields for each result
+- `-t, --text` - Download PDFs in memory and extract full text
 - `-c, --count` - Only show total result count (fast, single API call)
 - `-j, --json` - Output results as JSON
 - `-V, --version` - Show version
