@@ -47,6 +47,7 @@ class Record:
     # Search result fields
     score: Optional[float] = None
     highlights: Optional[list[str]] = None
+    text: Optional[str] = None
     raw: dict = None
 
     def __repr__(self):
@@ -99,7 +100,7 @@ class EpsteinClient:
         self.session.cookies.set("justiceGovAgeVerified", "true", domain=".justice.gov")
 
 
-    def search(self, query: str, n: Optional[int] = None, skip: int = 0) -> list[Record]:
+    def search(self, query: str, n: Optional[int] = None, skip: int = 0, text: bool = False) -> list[Record]:
         """
         Search the Epstein Library.
 
@@ -116,6 +117,7 @@ class EpsteinClient:
                None = return all results (may be slow for large result sets)
                Default API page size is 10.
             skip: Number of results to skip (default: 0)
+            text: If True, download each PDF in memory and extract text into record.text
 
         Returns:
             List of Record objects
@@ -129,6 +131,7 @@ class EpsteinClient:
         fetched = 0
         fetch_limit = (skip + n) if n else None
 
+        done = False
         while True:
             params = {"keys": query, "page": page}
             response = self.session.get(url, params=params)
@@ -171,7 +174,11 @@ class EpsteinClient:
                     results.append(result)
 
                 if fetch_limit and fetched >= fetch_limit:
-                    return results
+                    done = True
+                    break
+
+            if done:
+                break
 
             # Check if more pages
             total_info = hits_data.get("total", {})
@@ -180,6 +187,14 @@ class EpsteinClient:
                 break
 
             page += 1
+
+        if text:
+            import pdfplumber
+            for r in results:
+                response = self.session.get(r.url)
+                response.raise_for_status()
+                with pdfplumber.open(BytesIO(response.content)) as pdf:
+                    r.text = "\n".join(page.extract_text() or "" for page in pdf.pages)
 
         return results
 
@@ -201,33 +216,6 @@ class EpsteinClient:
         data = response.json()
         total_info = data.get("hits", {}).get("total", {})
         return total_info.get("value", 0) if isinstance(total_info, dict) else total_info
-
-    def text(self, query: str, n: int = 1, skip: int = 0) -> list[tuple[Record, str]]:
-        """
-        Search for documents and extract their text content in memory.
-
-        Args:
-            query: Search term or filename (e.g., "trump", "EFTA02185794.pdf")
-            n: Number of documents to extract text from (default: 1)
-            skip: Number of results to skip (default: 0)
-
-        Returns:
-            List of (Record, text) tuples
-        """
-        import pdfplumber
-
-        results = self.search(query, n=n, skip=skip)
-        if not results:
-            raise FileNotFoundError(f"No results for: {query}")
-
-        out = []
-        for r in results:
-            response = self.session.get(r.url)
-            response.raise_for_status()
-            with pdfplumber.open(BytesIO(response.content)) as pdf:
-                text = "\n".join(page.extract_text() or "" for page in pdf.pages)
-            out.append((r, text))
-        return out
 
 
 def main():
