@@ -37,6 +37,18 @@ es "epstein" -c
 # Extract full text from matching PDFs (downloaded and processed in memory)
 es "flight logs" -t -n 1
 
+# Extract events (who did what, when) using AI
+es "flight logs" -e -n 1
+
+# Use a different OpenRouter model for event extraction
+es "flight logs" -e -n 1 -m google/gemini-flash-1.5
+
+# Events as JSON
+es "flight logs" -e -n 1 --json
+
+# Skip first 10 results
+es "maxwell" -s 10
+
 # Output as JSON
 es "epstein" --json > results.json
 
@@ -46,8 +58,11 @@ es --version
 
 Options:
 - `-n` - Number of results (default: 50, use 0 for all)
+- `-s, --skip` - Skip first N results (default: 0)
 - `-v, --verbose` - Show all metadata fields for each result
 - `-t, --text` - Download PDFs in memory and extract full text
+- `-e, --events` - Extract events with timestamps from PDFs using AI (requires `OPENROUTER_API_KEY`)
+- `-m, --model` - OpenRouter model ID for `--events` (default: `deepseek/deepseek-chat-v3-0324`)
 - `-c, --count` - Only show total result count (fast, single API call)
 - `-j, --json` - Output results as JSON
 - `-V, --version` - Show version
@@ -222,6 +237,7 @@ class Record:
     score: Optional[float] = None
     highlights: Optional[list[str]] = None
     text: Optional[str] = None        # Populated when text=True
+    events: Optional[list] = None      # Populated when --events is used
     raw: dict = None                   # Full API response for this hit
 ```
 
@@ -232,6 +248,7 @@ class Record:
 - You can also download the PDF directly from `url`
 - Large documents are chunked; the same PDF may appear multiple times with different `chunkIndex` values
 - No authentication required (just needs `Referer` header)
+- `--events` requires the `OPENROUTER_API_KEY` environment variable to be set
 
 ## Legal Considerations
 

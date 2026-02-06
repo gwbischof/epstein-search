@@ -69,6 +69,17 @@ Examples:
         action="store_true",
         help="Download PDFs and extract text"
     )
+    parser.add_argument(
+        "-e", "--events",
+        action="store_true",
+        help="Extract events with timestamps from PDFs using AI"
+    )
+    parser.add_argument(
+        "-m", "--model",
+        type=str,
+        default=None,
+        help="OpenRouter model ID for --events (default: deepseek/deepseek-chat-v3-0324:free)"
+    )
 
     args = parser.parse_args()
 
@@ -84,9 +95,27 @@ Examples:
 
     n = args.n if args.n > 0 else None
 
+    if args.events:
+        results = client.search(args.query, n=n or 1, skip=args.skip)
+        if args.json:
+            output = []
+            for r in client._extract_events(client._extract_text(results), model=args.model):
+                if r.events:
+                    output.append({"filename": r.filename, "url": r.url, "events": [e.model_dump() for e in r.events]})
+            print(json.dumps(output, indent=2))
+        else:
+            for r in client._extract_events(client._extract_text(results), model=args.model):
+                print(f"\n--- {r.filename} " + "-" * (55 - len(r.filename)))
+                print(encode_url(r.url))
+                if r.events:
+                    for e in r.events:
+                        loc = f" @ {e.location}" if e.location else ""
+                        print(f"  [{e.timestamp}]{loc} {e.summary}")
+        return
+
     if args.text:
-        results = client.search(args.query, n=n or 1, skip=args.skip, text=True)
-        for r in results:
+        results = client.search(args.query, n=n or 1, skip=args.skip)
+        for r in client._extract_text(results):
             print(f"\n\n--- {r.filename} " + "-" * (55 - len(r.filename)))
             print(encode_url(r.url) + "\n")
             print(r.text)

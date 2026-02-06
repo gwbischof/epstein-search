@@ -5,10 +5,12 @@ The DOJ exposes a JSON API at /multimedia-search that powers the Epstein Library
 This client provides a clean interface to query it.
 """
 
+import os
 import requests
 from io import BytesIO
 from typing import Optional
 from dataclasses import dataclass
+from pydantic import BaseModel, Field
 
 
 @dataclass
@@ -48,11 +50,22 @@ class Record:
     score: Optional[float] = None
     highlights: Optional[list[str]] = None
     text: Optional[str] = None
+    events: Optional[list] = None  # list[Event] when populated
     raw: dict = None
 
     def __repr__(self):
         pages = f" (pages {self.start_page}-{self.end_page})" if self.start_page else ""
         return f"Record({self.filename}{pages})"
+
+
+class Event(BaseModel):
+    summary: str = Field(description="Brief summary of what happened")
+    timestamp: str = Field(description="When it happened (date, time, or date range as stated in the text)")
+    location: str | None = Field(default=None, description="Where it happened, if mentioned in the text")
+
+
+class EventList(BaseModel):
+    events: list[Event] = Field(description="List of events extracted from the document")
 
 
 # Alias for backwards compatibility
@@ -189,14 +202,20 @@ class EpsteinClient:
             page += 1
 
         if text:
-            import pdfplumber
-            for r in results:
-                response = self.session.get(r.url)
-                response.raise_for_status()
-                with pdfplumber.open(BytesIO(response.content)) as pdf:
-                    r.text = "\n".join(page.extract_text() or "" for page in pdf.pages)
+            for _ in self._extract_text(results):
+                pass
 
         return results
+
+    def _extract_text(self, records: list[Record]):
+        """Download PDFs and extract text. Yields each record after processing."""
+        import pdfplumber
+        for r in records:
+            response = self.session.get(r.url)
+            response.raise_for_status()
+            with pdfplumber.open(BytesIO(response.content)) as pdf:
+                r.text = "\n".join(page.extract_text() or "" for page in pdf.pages)
+            yield r
 
     def count(self, query: str) -> int:
         """
@@ -216,6 +235,47 @@ class EpsteinClient:
         data = response.json()
         total_info = data.get("hits", {}).get("total", {})
         return total_info.get("value", 0) if isinstance(total_info, dict) else total_info
+
+    _EVENTS_SYSTEM_PROMPT = (
+        "You extract events from legal documents. "
+        "An event is a specific action taken by a named person or organization at a stated time. "
+        "Each event summary should be one sentence (10-25 words) in the format: "
+        "'[Person/Organization] [action] [details]'. "
+        "For timestamp, use the exact date or date range as written in the text. "
+        "Only extract events that have both a clearly identified actor and a time reference. "
+        "If a location is mentioned for the event, include it. "
+        "Skip boilerplate, headers, and procedural language that is not a discrete event."
+    )
+
+    _EVENTS_USER_PROMPT = (
+        "Extract all events from the following document. "
+        "For each event, identify WHO did WHAT and WHEN:\n\n"
+    )
+
+    DEFAULT_MODEL = "deepseek/deepseek-chat-v3-0324"
+
+    def _extract_events(self, records: list[Record], model: str | None = None):
+        """Extract events from records that have text. Yields each record after processing."""
+        from agno.agent import Agent
+        from agno.models.openrouter import OpenRouter
+
+        api_key = os.environ.get("OPENROUTER_API_KEY")
+        if not api_key:
+            raise SystemExit("Error: OPENROUTER_API_KEY environment variable is required for --events")
+
+        agent = Agent(
+            model=OpenRouter(id=model or self.DEFAULT_MODEL, api_key=api_key),
+            instructions=self._EVENTS_SYSTEM_PROMPT,
+            output_schema=EventList,
+        )
+        for r in records:
+            if not r.text:
+                yield r
+                continue
+            response = agent.run(self._EVENTS_USER_PROMPT + r.text)
+            if response.content and isinstance(response.content, EventList):
+                r.events = response.content.events
+            yield r
 
 
 def main():
