@@ -237,26 +237,27 @@ class EpsteinClient:
         return total_info.get("value", 0) if isinstance(total_info, dict) else total_info
 
     _EVENTS_SYSTEM_PROMPT = (
-        "You extract events from legal documents. "
-        "An event is a specific action taken by a named person or organization at a stated time. "
-        "Each event summary should be one sentence (10-25 words) in the format: "
-        "'[Person/Organization] [action] [details]'. "
-        "For timestamp, be as specific as possible — include the full date (MM/DD/YYYY) when available, "
-        "otherwise use the most precise date reference stated in the text (e.g. 'March 2005', '2011'). "
-        "Only extract events that have both a clearly identified actor and a time reference. "
-        "If a location is mentioned for the event, include it. "
-        "Skip boilerplate, headers, and procedural language that is not a discrete event."
+        "Extract events from legal documents to assist a criminal investigation. "
+        "Be objective — report only what the document states. "
+        "Focus on interactions between people: meetings, calls, trips, transactions, communications. "
+        "Flag suspected code words or euphemisms in quotes. "
+        "Format: '[Person] [action] [details]' (10-25 words). "
+        "Timestamps: use full dates (MM/DD/YYYY) when available, otherwise the most precise reference in the text. "
+        "Include location if mentioned. Require both an actor and a time reference. "
+        "Skip boilerplate and procedural language."
     )
 
     _EVENTS_USER_PROMPT = (
-        "Extract all events from the following document. "
+        "Extract events related to '{query}' from the following document. "
+        "Focus on events relevant to the search term. "
         "For each event, identify WHO did WHAT and WHEN:\n\n"
     )
 
     DEFAULT_MODEL = "deepseek/deepseek-chat-v3-0324"
 
-    def _extract_events(self, records: list[Record], model: str | None = None):
-        """Extract events from records that have text. Yields each record after processing."""
+    def _extract_events(self, records: list[Record], model: str | None = None, query: str = "", workers: int = 10):
+        """Extract events from records that have text. Yields each record as completed."""
+        from concurrent.futures import ThreadPoolExecutor, as_completed
         from agno.agent import Agent
         from agno.models.openrouter import OpenRouter
 
@@ -264,19 +265,26 @@ class EpsteinClient:
         if not api_key:
             raise SystemExit("Error: OPENROUTER_API_KEY environment variable is required for --events")
 
-        agent = Agent(
-            model=OpenRouter(id=model or self.DEFAULT_MODEL, api_key=api_key),
-            instructions=self._EVENTS_SYSTEM_PROMPT,
-            output_schema=EventList,
-        )
-        for r in records:
+        prompt = self._EVENTS_USER_PROMPT.format(query=query)
+
+        def process(r):
             if not r.text:
-                yield r
-                continue
-            response = agent.run(self._EVENTS_USER_PROMPT + r.text)
+                return r
+            agent = Agent(
+                model=OpenRouter(id=model or self.DEFAULT_MODEL, api_key=api_key),
+                instructions=self._EVENTS_SYSTEM_PROMPT,
+                output_schema=EventList,
+            )
+            response = agent.run(prompt + r.text)
             if response.content and isinstance(response.content, EventList):
                 r.events = response.content.events
-            yield r
+            return r
+
+        records = list(records)
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = {pool.submit(process, r): r for r in records}
+            for future in as_completed(futures):
+                yield future.result()
 
 
 def main():

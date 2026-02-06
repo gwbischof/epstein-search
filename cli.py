@@ -98,13 +98,18 @@ Examples:
     if args.events:
         results = client.search(args.query, n=n or 1, skip=args.skip)
         if args.json:
-            output = []
-            for r in client._extract_events(client._extract_text(results), model=args.model):
+            print("[", flush=True)
+            first = True
+            for r in client._extract_events(client._extract_text(results), model=args.model, query=args.query):
                 if r.events:
-                    output.append({"filename": r.filename, "url": encode_url(r.url), "events": [e.model_dump() for e in r.events]})
-            print(json.dumps(output, indent=2))
+                    entry = {"filename": r.filename, "url": encode_url(r.url), "events": [e.model_dump() for e in r.events]}
+                    if not first:
+                        print(",", flush=True)
+                    print(json.dumps(entry, indent=2), end="", flush=True)
+                    first = False
+            print("\n]", flush=True)
         else:
-            for r in client._extract_events(client._extract_text(results), model=args.model):
+            for r in client._extract_events(client._extract_text(results), model=args.model, query=args.query):
                 print(f"\n--- {r.filename} " + "-" * (55 - len(r.filename)))
                 print(encode_url(r.url))
                 if r.events:
