@@ -101,7 +101,7 @@ Examples:
             output = []
             for r in client._extract_events(client._extract_text(results), model=args.model):
                 if r.events:
-                    output.append({"filename": r.filename, "url": r.url, "events": [e.model_dump() for e in r.events]})
+                    output.append({"filename": r.filename, "url": encode_url(r.url), "events": [e.model_dump() for e in r.events]})
             print(json.dumps(output, indent=2))
         else:
             for r in client._extract_events(client._extract_text(results), model=args.model):

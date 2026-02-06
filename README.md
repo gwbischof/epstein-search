@@ -46,6 +46,14 @@ es "flight logs" -e -n 1 -m google/gemini-flash-1.5
 # Events as JSON
 es "flight logs" -e -n 1 --json
 
+# Build an events file from multiple searches
+es "flight logs" -e -n 5 --json > events.json
+es "deposition" -e -n 3 --json >> events.json
+
+# Sort all events into a timeline
+estl events.json
+estl events.json > sorted.json
+
 # Skip first 10 results
 es "maxwell" -s 10
 
@@ -66,6 +74,21 @@ Options:
 - `-c, --count` - Only show total result count (fast, single API call)
 - `-j, --json` - Output results as JSON
 - `-V, --version` - Show version
+
+## Timeline
+
+The `estl` command merges events from multiple searches into a sorted chronological timeline.
+
+```bash
+# Build an events file from multiple searches
+es "flight logs" -e -n 5 --json > events.json
+es "deposition" -e -n 3 --json >> events.json
+
+# Sort into a timeline
+estl events.json
+```
+
+Output is a flat JSON list sorted by timestamp, with source `filename` and `url` attached to each event.
 
 ## Updating
 
