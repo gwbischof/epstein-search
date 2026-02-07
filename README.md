@@ -105,6 +105,49 @@ estl events.json
 
 Output is a flat JSON list sorted by timestamp, with source `filename` and `url` attached to each event.
 
+## MCP Server
+
+The MCP server exposes the full search functionality as tools for AI assistants (Claude, etc.).
+
+### Tools
+
+| Tool | Description |
+|------|-------------|
+| `search` | Search with `n`, `skip`, and OR queries via `\|` — returns full metadata and highlights |
+| `count` | Get total result count for a query (single API call) |
+| `extract_text` | Search + download PDFs + extract full text |
+| `extract_events` | Search + download PDFs + AI event extraction (requires `OPENROUTER_API_KEY`) |
+
+### Configuration
+
+Add to your MCP client config (e.g. `claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "epstein-search": {
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/gwbischof/epstein-search", "epstein-search-mcp"],
+      "env": {
+        "OPENROUTER_API_KEY": "your-key-here"
+      }
+    }
+  }
+}
+```
+
+`OPENROUTER_API_KEY` is optional — only needed for the `extract_events` tool.
+
+### Local Development
+
+```bash
+# Run the MCP server directly
+uv run mcp_server.py
+
+# Test with the MCP Inspector
+mcp dev mcp_server.py
+```
+
 ## Updating
 
 ```bash
