@@ -6,6 +6,7 @@ This client provides a clean interface to query it.
 """
 
 import os
+import sys
 import requests
 from io import BytesIO
 from typing import Optional
@@ -113,38 +114,11 @@ class EpsteinClient:
         self.session.cookies.set("justiceGovAgeVerified", "true", domain=".justice.gov")
 
 
-    def search(self, query: str, n: Optional[int] = None, skip: int = 0, text: bool = False) -> list[Record]:
-        """
-        Search the Epstein Library.
-
-        Supports advanced search patterns:
-        - Basic search: "flight logs" (matches documents containing these terms)
-        - Exact phrase: '"flight logs"' (matches exact phrase)
-        - Wildcard *: "fl*ght", "maxw*" (matches any characters)
-        - Wildcard ?: "flight?" (matches single character)
-        - Required terms: "+flight +logs" (both terms must appear)
-
-        Args:
-            query: Search terms (e.g., "flight logs", "Maxwell")
-            n: Number of results to return.
-               None = return all results (may be slow for large result sets)
-               Default API page size is 10.
-            skip: Number of results to skip (default: 0)
-            text: If True, download each PDF in memory and extract text into record.text
-
-        Returns:
-            List of Record objects
-
-        Raises:
-            requests.HTTPError: If the request fails
-        """
+    def _search_single(self, query: str):
+        """Yield all Records for a single query term, handling pagination internally."""
         url = f"{self.BASE_URL}{self.SEARCH_ENDPOINT}"
-        results = []
         page = 0
-        fetched = 0
-        fetch_limit = (skip + n) if n else None
 
-        done = False
         while True:
             params = {"keys": query, "page": page}
             response = self.session.get(url, params=params)
@@ -157,7 +131,7 @@ class EpsteinClient:
             for hit in hits:
                 source = hit.get("_source", {})
                 highlights = hit.get("highlight", {}).get("content", [])
-                result = Record(
+                yield Record(
                     document_id=source.get("documentId", ""),
                     filename=source.get("ORIGIN_FILE_NAME", ""),
                     url=source.get("ORIGIN_FILE_URI", ""),
@@ -182,16 +156,6 @@ class EpsteinClient:
                     highlights=highlights if highlights else None,
                     raw=hit,
                 )
-                fetched += 1
-                if fetched > skip:
-                    results.append(result)
-
-                if fetch_limit and fetched >= fetch_limit:
-                    done = True
-                    break
-
-            if done:
-                break
 
             # Check if more pages
             total_info = hits_data.get("total", {})
@@ -201,21 +165,82 @@ class EpsteinClient:
 
             page += 1
 
-        if text:
-            for _ in self._extract_text(results):
-                pass
+    def search(self, queries: str | list[str], n: Optional[int] = None, skip: int = 0):
+        """
+        Search the Epstein Library. Yields Records one at a time.
 
-        return results
+        Args:
+            queries: A single query string, or a list of query strings.
+                     Multiple queries are interleaved round-robin and
+                     deduplicated by document_id.
+            n: Number of results to yield.
+               None = yield all results.
+            skip: Number of unique results to skip before yielding (default: 0)
+
+        Yields:
+            Record objects
+        """
+        if isinstance(queries, str):
+            queries = [queries]
+
+        if len(queries) == 1:
+            # Single query — yield directly with skip/n applied
+            skipped = 0
+            yielded = 0
+            for record in self._search_single(queries[0]):
+                if skipped < skip:
+                    skipped += 1
+                    continue
+                yield record
+                yielded += 1
+                if n and yielded >= n:
+                    return
+        else:
+            # Multiple queries — round-robin with dedup
+            generators = [self._search_single(q) for q in queries]
+            seen = set()
+            skipped = 0
+            yielded = 0
+
+            while generators:
+                exhausted = []
+                for i, gen in enumerate(generators):
+                    try:
+                        record = next(gen)
+                    except StopIteration:
+                        exhausted.append(i)
+                        continue
+
+                    if record.document_id in seen:
+                        continue
+                    seen.add(record.document_id)
+
+                    if skipped < skip:
+                        skipped += 1
+                        continue
+
+                    yield record
+                    yielded += 1
+                    if n and yielded >= n:
+                        return
+
+                # Remove exhausted generators in reverse order
+                for i in reversed(exhausted):
+                    generators.pop(i)
 
     def _extract_text(self, records: list[Record]):
         """Download PDFs and extract text. Yields each record after processing."""
         import pdfplumber
-        for r in records:
+        records = list(records)
+        total = len(records)
+        for i, r in enumerate(records, 1):
+            print(f"\r\033[KDownloading {i}/{total}: {r.filename}", end="", file=sys.stderr, flush=True)
             response = self.session.get(r.url)
             response.raise_for_status()
             with pdfplumber.open(BytesIO(response.content)) as pdf:
                 r.text = "\n".join(page.extract_text() or "" for page in pdf.pages)
             yield r
+        print("", file=sys.stderr)
 
     def count(self, query: str) -> int:
         """
@@ -256,10 +281,19 @@ class EpsteinClient:
     DEFAULT_MODEL = "deepseek/deepseek-chat-v3-0324"
 
     def _extract_events(self, records: list[Record], model: str | None = None, query: str = "", workers: int = 10):
-        """Extract events from records that have text. Yields each record as completed."""
+        """Download PDFs, extract text, and extract events in parallel. Yields each record as completed."""
+        import logging
+        import pdfplumber
         from concurrent.futures import ThreadPoolExecutor, as_completed
         from agno.agent import Agent
         from agno.models.openrouter import OpenRouter
+
+        # Redirect agno's logger to stderr (it defaults to stdout via Rich, corrupting JSON output)
+        agno_logger = logging.getLogger("agno")
+        agno_logger.handlers.clear()
+        handler = logging.StreamHandler(sys.stderr)
+        handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
+        agno_logger.addHandler(handler)
 
         api_key = os.environ.get("OPENROUTER_API_KEY")
         if not api_key:
@@ -268,35 +302,44 @@ class EpsteinClient:
         prompt = self._EVENTS_USER_PROMPT.format(query=query)
 
         def process(r):
+            # Download PDF and extract text
+            response = self.session.get(r.url)
+            response.raise_for_status()
+            with pdfplumber.open(BytesIO(response.content)) as pdf:
+                r.text = "\n".join(page.extract_text() or "" for page in pdf.pages)
             if not r.text:
                 return r
+            # Extract events via LLM
             agent = Agent(
                 model=OpenRouter(id=model or self.DEFAULT_MODEL, api_key=api_key),
                 instructions=self._EVENTS_SYSTEM_PROMPT,
                 output_schema=EventList,
             )
-            response = agent.run(prompt + r.text)
-            if response.content and isinstance(response.content, EventList):
-                r.events = response.content.events
+            resp = agent.run(prompt + r.text)
+            if resp.content and isinstance(resp.content, EventList):
+                r.events = resp.content.events
             return r
 
         records = list(records)
+        total = len(records)
+        done = 0
         with ThreadPoolExecutor(max_workers=workers) as pool:
             futures = {pool.submit(process, r): r for r in records}
             for future in as_completed(futures):
-                yield future.result()
+                done += 1
+                r = future.result()
+                print(f"\r\033[KProcessing {done}/{total}: {r.filename}", end="", file=sys.stderr, flush=True)
+                yield r
+        print("", file=sys.stderr)
 
 
 def main():
     """Example usage."""
     client = EpsteinClient()
 
-    # Get 50 results
-    print("Searching for 'flight logs' (n=50)...")
-    results = client.search("flight logs", n=50)
-    print(f"Got {len(results)} results\n")
-
-    for r in results[:5]:
+    # Get 5 results
+    print("Searching for 'flight logs' (n=5)...")
+    for r in client.search("flight logs", n=5):
         print(f"  {r.filename}")
         print(f"    {r.url}\n")
 

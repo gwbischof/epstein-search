@@ -94,19 +94,23 @@ Examples:
         sys.exit(1)
 
     client = EpsteinClient()
+    queries = [q.strip() for q in args.query.split("|")]
 
     if args.count:
+        if len(queries) > 1:
+            print("Error: --count does not support OR queries", file=sys.stderr)
+            sys.exit(1)
         print(client.count(args.query))
         return
 
     n = args.n if args.n > 0 else None
 
     if args.events:
-        results = client.search(args.query, n=n or 1, skip=args.skip)
+        results = client.search(queries, n=n or 1, skip=args.skip)
         if args.json:
             print("[", flush=True)
             first = True
-            for r in client._extract_events(client._extract_text(results), model=args.model, query=args.query, workers=args.workers):
+            for r in client._extract_events(results, model=args.model, query=args.query, workers=args.workers):
                 if r.events:
                     entry = {"filename": r.filename, "url": encode_url(r.url), "events": [e.model_dump() for e in r.events]}
                     if not first:
@@ -115,7 +119,7 @@ Examples:
                     first = False
             print("\n]", flush=True)
         else:
-            for r in client._extract_events(client._extract_text(results), model=args.model, query=args.query, workers=args.workers):
+            for r in client._extract_events(results, model=args.model, query=args.query, workers=args.workers):
                 print(f"\n--- {r.filename} " + "-" * (55 - len(r.filename)))
                 print(encode_url(r.url))
                 if r.events:
@@ -125,25 +129,29 @@ Examples:
         return
 
     if args.text:
-        results = client.search(args.query, n=n or 1, skip=args.skip)
+        results = client.search(queries, n=n or 1, skip=args.skip)
         for r in client._extract_text(results):
             print(f"\n\n--- {r.filename} " + "-" * (55 - len(r.filename)))
             print(encode_url(r.url) + "\n")
             print(r.text)
         return
 
-    results = client.search(args.query, n=n, skip=args.skip)
+    results = client.search(queries, n=n, skip=args.skip)
 
     if args.json:
-        output = []
+        print("[", flush=True)
+        first = True
         for r in results:
             if r.raw:
                 raw = r.raw.copy()
                 src = raw.get("_source", {})
                 if "ORIGIN_FILE_URI" in src:
                     raw["_source"] = {**src, "ORIGIN_FILE_URI": encode_url(src["ORIGIN_FILE_URI"])}
-                output.append(raw)
-        print(json.dumps(output, indent=2))
+                if not first:
+                    print(",", flush=True)
+                print(json.dumps(raw, indent=2), end="", flush=True)
+                first = False
+        print("\n]", flush=True)
     elif args.verbose:
         from dataclasses import fields
         for r in results:

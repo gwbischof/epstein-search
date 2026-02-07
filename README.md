@@ -27,6 +27,15 @@ uv tool install ./epstein-search
 # Basic search (returns 50 results by default)
 es "maxwell"
 
+# OR search (results interleaved, deduplicated by document)
+es "pizza | flights" -n 10
+
+# Combine AND (+) with OR (|): docs with (epstein AND dog) OR (pizza AND cat)
+es "+epstein +dog | +pizza +cat" -n 10
+
+# Multiple OR terms
+es "pizza | flights | maxwell" -n 15
+
 # Specify number of results
 es "flight logs" -n 100
 
@@ -67,6 +76,7 @@ es --version
 ```
 
 Options:
+- `|` - OR operator: `"pizza | flights"` runs separate queries, interleaves results round-robin, and deduplicates by document. Works with or without spaces around `|`.
 - `-n` - Number of results (default: 50, use 0 for all)
 - `-s, --skip` - Skip first N results (default: 0)
 - `-v, --verbose` - Show all metadata fields for each result
@@ -117,25 +127,25 @@ from client import EpsteinClient
 
 client = EpsteinClient()
 
-# Get 10 results
-results = client.search("Maxwell", n=10)
-
-# Get 100 results
-results = client.search("flight logs", n=100)
-
-# Skip first 50, get next 100
-results = client.search("flight logs", n=100, skip=50)
-
-# Get ALL results (no limit - may be slow for broad queries)
-results = client.search("Trump")
-
-for r in results:
+# search() is a generator — iterate or collect with list()
+for r in client.search("Maxwell", n=10):
     print(r.filename, r.url)
 
-# Search and extract full text from PDFs (downloaded in memory)
-results = client.search("flight logs", n=1, text=True)
-for r in results:
-    print(r.text)
+# OR search — pass a list of queries (interleaved, deduplicated by document)
+for r in client.search(["pizza", "flights"], n=10):
+    print(r.filename, r.url)
+
+# AND + OR: docs with (epstein AND dog) OR (pizza AND cat)
+for r in client.search(["+epstein +dog", "+pizza +cat"], n=10):
+    print(r.filename, r.url)
+
+# Skip first 50, get next 100
+for r in client.search("flight logs", n=100, skip=50):
+    print(r.filename)
+
+# Get ALL results (no limit - may be slow for broad queries)
+for r in client.search("Trump"):
+    print(r.filename)
 
 # Get total count for a query (without fetching all results)
 count = client.count("Maxwell")
@@ -168,7 +178,7 @@ Returns JSON with Elasticsearch-style results.
 
 | Pattern | Example | Notes |
 |---------|---------|-------|
-| Boolean AND/OR/NOT | `flight AND logs` | Does not work |
+| Boolean AND/NOT | `flight AND logs` | Does not work (use `|` for OR via CLI) |
 | Exclude terms | `flight -private` | Does not work |
 | Regex | `/flight.*/` | Treated as literal text |
 | Fuzzy search | `maxwell~` | Does not expand to catch typos |
