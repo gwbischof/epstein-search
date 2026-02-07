@@ -45,8 +45,8 @@ Examples:
     parser.add_argument(
         "-n",
         type=int,
-        default=50,
-        help="Number of results (default: 50, use 0 for all)"
+        default=0,
+        help="Number of results (default: 0 = all)"
     )
     parser.add_argument(
         "-s", "--skip",
