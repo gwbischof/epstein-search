@@ -126,6 +126,12 @@ The MCP server exposes the full search functionality as tools for AI assistants 
 claude mcp add -s user epstein-search -- uvx --from "git+https://github.com/gwbischof/epstein-search" epstein-search-mcp
 ```
 
+To auto-update on every launch (pulls latest from GitHub each time):
+
+```bash
+claude mcp add -s user epstein-search -- uvx --reinstall --from "git+https://github.com/gwbischof/epstein-search" epstein-search-mcp
+```
+
 ### Claude Desktop / Other MCP Clients
 
 Add to your MCP client config (e.g. `claude_desktop_config.json`):
