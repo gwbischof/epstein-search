@@ -7,6 +7,7 @@ This client provides a clean interface to query it.
 
 import os
 import sys
+import tempfile
 import requests
 from io import BytesIO
 from typing import Optional
@@ -51,6 +52,7 @@ class Record:
     highlights: Optional[list[str]] = None
     text: Optional[str] = None
     events: Optional[list] = None  # list[Event] when populated
+    images: Optional[list] = None  # list[dict] when populated
     raw: dict = None
 
     def __repr__(self):
@@ -247,6 +249,66 @@ class EpsteinClient:
         data = response.json()
         total_info = data.get("hits", {}).get("total", {})
         return total_info.get("value", 0) if isinstance(total_info, dict) else total_info
+
+    def _extract_images(self, records: list[Record], page: int | None = None, output_dir: str = "temp"):
+        """Download PDFs and extract embedded images. Yields each record after processing."""
+        import fitz
+
+        os.makedirs(output_dir, exist_ok=True)
+        records = list(records)
+        total = len(records)
+
+        for i, r in enumerate(records, 1):
+            print(f"\r\033[KDownloading {i}/{total}: {r.filename}", end="", file=sys.stderr, flush=True)
+            response = self.session.get(r.url)
+            response.raise_for_status()
+
+            tmp = tempfile.NamedTemporaryFile(suffix=".pdf", delete=False)
+            tmp.write(response.content)
+            tmp.close()
+
+            try:
+                doc = fitz.open(tmp.name)
+                r.images = []
+
+                if page is not None:
+                    pages_to_process = [page - 1] if 1 <= page <= len(doc) else []
+                else:
+                    pages_to_process = range(len(doc))
+
+                for page_num in pages_to_process:
+                    p = doc[page_num]
+                    imgs = p.get_images(full=True)
+                    for j, img in enumerate(imgs):
+                        xref = img[0]
+                        base_image = doc.extract_image(xref)
+                        ext = base_image["ext"]
+                        data = base_image["image"]
+                        w = base_image["width"]
+                        h = base_image["height"]
+
+                        suffix = f"_{j}" if len(imgs) > 1 else ""
+                        filename = f"{r.document_id}_page{page_num + 1}{suffix}.{ext}"
+                        out_path = os.path.join(output_dir, filename)
+
+                        with open(out_path, "wb") as f:
+                            f.write(data)
+
+                        r.images.append({
+                            "path": os.path.abspath(out_path),
+                            "page": page_num + 1,
+                            "width": w,
+                            "height": h,
+                            "size": len(data),
+                            "format": ext,
+                        })
+
+                doc.close()
+            finally:
+                os.unlink(tmp.name)
+
+            yield r
+        print("", file=sys.stderr)
 
     _EVENTS_SYSTEM_PROMPT = (
         "Extract events from legal documents to assist a criminal investigation. "

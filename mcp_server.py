@@ -77,38 +77,34 @@ def extract_text(query: str, n: int = 1, skip: int = 0) -> list[dict]:
     return results
 
 @mcp.tool()
-def extract_events(
+def extract_image(
     query: str,
     n: int = 1,
     skip: int = 0,
-    model: str | None = None,
-    workers: int = 10,
+    page: int | None = None,
+    output_dir: str = "temp",
 ) -> list[dict]:
     """
-    Search the DOJ Epstein Library, download PDFs, and use AI to extract
-    structured events (who, what, when, where) from each document.
-    Requires the OPENROUTER_API_KEY environment variable.
+    Search the DOJ Epstein Library, download matching PDFs, and extract
+    embedded images from each document.
 
     Args:
         query: Search terms (same syntax as search).
         n: Maximum number of documents to process (default: 1, 0 for all).
         skip: Number of results to skip (default: 0).
-        model: OpenRouter model ID (default: deepseek/deepseek-chat-v3-0324).
-        workers: Number of parallel workers for AI extraction (default: 10).
+        page: Page number (1-indexed) to extract images from. If omitted, extracts from all pages.
+        output_dir: Directory to save extracted images (default: "temp").
 
     Returns:
-        A list of records with metadata and extracted events. Each event has
-        summary, timestamp, and optional location fields.
+        A list of records with metadata and extracted image info. Each image
+        entry has path, page, width, height, size, and format fields.
     """
     client = EpsteinClient()
     queries = _parse_queries(query)
     records = client.search(queries, n=n or None, skip=skip)
     results = []
-    for record in client._extract_events(records, model=model, query=query, workers=workers):
-        d = _record_to_dict(record)
-        if record.events:
-            d["events"] = [e.model_dump() for e in record.events]
-        results.append(d)
+    for record in client._extract_images(records, page=page, output_dir=output_dir):
+        results.append(_record_to_dict(record))
     return results
 
 def main():
