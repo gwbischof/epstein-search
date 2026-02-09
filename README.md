@@ -48,23 +48,6 @@ es "epstein" -c
 # Extract full text from matching PDFs (downloaded and processed in memory)
 es "flight logs" -t -n 1
 
-# Extract events (who did what, when) using AI
-es "flight logs" -e -n 1
-
-# Use a different OpenRouter model for event extraction
-es "flight logs" -e -n 1 -m google/gemini-flash-1.5
-
-# Events as JSON
-es "flight logs" -e -n 1 --json
-
-# Build an events file from multiple searches
-es "flight logs" -e -n 5 --json > events.json
-es "deposition" -e -n 3 --json >> events.json
-
-# Sort all events into a timeline
-estl events.json
-estl events.json > sorted.json
-
 # Skip first 10 results
 es "maxwell" -s 10
 
@@ -81,29 +64,9 @@ Options:
 - `-s, --skip` - Skip first N results (default: 0)
 - `-v, --verbose` - Show all metadata fields for each result
 - `-t, --text` - Download PDFs in memory and extract full text
-- `-e, --events` - Extract events with timestamps from PDFs using AI
-- `-m, --model` - OpenRouter model ID for `--events` (default: `deepseek/deepseek-chat-v3-0324`)
-- `-w, --workers` - Number of parallel workers for `--events` (default: 10)
-
-Event extraction (`-e`) uses [OpenRouter](https://openrouter.ai/) to send PDF text to an LLM. Set the `OPENROUTER_API_KEY` environment variable before using it. Want support for another provider? [Open an issue](https://github.com/gwbischof/epstein-search/issues).
 - `-c, --count` - Only show total result count (fast, single API call)
 - `-j, --json` - Output results as JSON
 - `-V, --version` - Show version
-
-## Timeline
-
-The `estl` command merges events from multiple searches into a sorted chronological timeline.
-
-```bash
-# Build an events file from multiple searches
-es "flight logs" -e -n 5 --json > events.json
-es "deposition" -e -n 3 --json >> events.json
-
-# Sort into a timeline
-estl events.json
-```
-
-Output is a flat JSON list sorted by timestamp, with source `filename` and `url` attached to each event.
 
 ## MCP Server
 
@@ -116,6 +79,7 @@ The MCP server exposes the full search functionality as tools for AI assistants 
 | `search` | Search with `n`, `skip`, and OR queries via `\|` — returns full metadata and highlights |
 | `count` | Get total result count for a query (single API call) |
 | `extract_text` | Search + download PDFs + extract full text |
+| `extract_image` | Search + download PDFs + extract embedded images to disk |
 | `generate_pdf` | Convert a markdown file to a styled PDF |
 | `merge_markdown_to_pdf` | Merge multiple markdown files into a single PDF with page breaks and page numbers |
 
@@ -326,7 +290,6 @@ class Record:
     score: Optional[float] = None
     highlights: Optional[list[str]] = None
     text: Optional[str] = None        # Populated when text=True
-    events: Optional[list] = None      # Populated when --events is used
     raw: dict = None                   # Full API response for this hit
 ```
 
@@ -337,8 +300,6 @@ class Record:
 - You can also download the PDF directly from `url`
 - Large documents are chunked; the same PDF may appear multiple times with different `chunkIndex` values
 - No authentication required (just needs `Referer` header)
-- `--events` requires the `OPENROUTER_API_KEY` environment variable to be set
-
 ## Legal Considerations
 
 This client accesses the DOJ's public search API for documents released under the Epstein Files Transparency Act.
