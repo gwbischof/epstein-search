@@ -1,6 +1,7 @@
 from dataclasses import fields
 from mcp.server.fastmcp import FastMCP
 from client import EpsteinClient
+from pdf import generate_pdf as _generate_pdf, merge_markdown_to_pdf as _merge_markdown_to_pdf
 
 mcp = FastMCP("epstein-search")
 
@@ -106,6 +107,37 @@ def extract_image(
     for record in client._extract_images(records, page=page, output_dir=output_dir):
         results.append(_record_to_dict(record))
     return results
+
+@mcp.tool()
+def generate_pdf(markdown_path: str, output_path: str | None = None) -> str:
+    """
+    Convert a markdown file to a styled PDF.
+
+    Args:
+        markdown_path: Path to the markdown file to convert.
+        output_path: Path for the output PDF. If omitted, uses the input
+                     filename with a .pdf extension.
+
+    Returns:
+        The path to the generated PDF file.
+    """
+    return _generate_pdf(markdown_path, output_path)
+
+@mcp.tool()
+def merge_markdown_to_pdf(markdown_paths: list[str], output_path: str) -> str:
+    """
+    Merge multiple markdown files into a single styled PDF with page breaks
+    between each file and page numbers on every page.
+
+    Args:
+        markdown_paths: List of paths to markdown files, in the order they
+                        should appear in the PDF.
+        output_path: Path for the output PDF file.
+
+    Returns:
+        The path to the generated PDF file.
+    """
+    return _merge_markdown_to_pdf(markdown_paths, output_path)
 
 def main():
     mcp.run(transport='stdio')
