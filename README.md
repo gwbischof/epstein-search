@@ -116,9 +116,17 @@ The MCP server exposes the full search functionality as tools for AI assistants 
 | `search` | Search with `n`, `skip`, and OR queries via `\|` — returns full metadata and highlights |
 | `count` | Get total result count for a query (single API call) |
 | `extract_text` | Search + download PDFs + extract full text |
-| `extract_events` | Search + download PDFs + AI event extraction (requires `OPENROUTER_API_KEY`) |
+| `extract_image` | Search + download PDFs + extract embedded images to disk |
+| `generate_pdf` | Convert a markdown file to a styled PDF |
+| `merge_markdown_to_pdf` | Merge multiple markdown files into a single PDF with page breaks and page numbers |
 
-### Configuration
+### Claude Code
+
+```bash
+claude mcp add -s user epstein-search -- uvx --from "git+https://github.com/gwbischof/epstein-search" epstein-search-mcp
+```
+
+### Claude Desktop / Other MCP Clients
 
 Add to your MCP client config (e.g. `claude_desktop_config.json`):
 
@@ -127,16 +135,11 @@ Add to your MCP client config (e.g. `claude_desktop_config.json`):
   "mcpServers": {
     "epstein-search": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/gwbischof/epstein-search", "epstein-search-mcp"],
-      "env": {
-        "OPENROUTER_API_KEY": "your-key-here"
-      }
+      "args": ["--from", "git+https://github.com/gwbischof/epstein-search", "epstein-search-mcp"]
     }
   }
 }
 ```
-
-`OPENROUTER_API_KEY` is optional — only needed for the `extract_events` tool.
 
 ### Local Development
 
