@@ -78,37 +78,6 @@ def extract_text(query: str, n: int = 1, skip: int = 0) -> list[dict]:
     return results
 
 @mcp.tool()
-def extract_image(
-    query: str,
-    n: int = 1,
-    skip: int = 0,
-    page: int | None = None,
-    output_dir: str = "temp",
-) -> list[dict]:
-    """
-    Search the DOJ Epstein Library, download matching PDFs, and extract
-    embedded images from each document.
-
-    Args:
-        query: Search terms (same syntax as search).
-        n: Maximum number of documents to process (default: 1, 0 for all).
-        skip: Number of results to skip (default: 0).
-        page: Page number (1-indexed) to extract images from. If omitted, extracts from all pages.
-        output_dir: Directory to save extracted images (default: "temp").
-
-    Returns:
-        A list of records with metadata and extracted image info. Each image
-        entry has path, page, width, height, size, and format fields.
-    """
-    client = EpsteinClient()
-    queries = _parse_queries(query)
-    records = client.search(queries, n=n or None, skip=skip)
-    results = []
-    for record in client._extract_images(records, page=page, output_dir=output_dir):
-        results.append(_record_to_dict(record))
-    return results
-
-@mcp.tool()
 def generate_pdf(markdown_path: str, output_path: str | None = None) -> str:
     """
     Convert a markdown file to a styled PDF.

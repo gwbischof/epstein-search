@@ -116,7 +116,6 @@ The MCP server exposes the full search functionality as tools for AI assistants 
 | `search` | Search with `n`, `skip`, and OR queries via `\|` — returns full metadata and highlights |
 | `count` | Get total result count for a query (single API call) |
 | `extract_text` | Search + download PDFs + extract full text |
-| `extract_image` | Search + download PDFs + extract embedded images to disk |
 | `generate_pdf` | Convert a markdown file to a styled PDF |
 | `merge_markdown_to_pdf` | Merge multiple markdown files into a single PDF with page breaks and page numbers |
 
