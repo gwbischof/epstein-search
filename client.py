@@ -101,7 +101,6 @@ class EpsteinClient:
         self.session.headers.update({
             "Accept": "application/json",
         })
-        self.session.cookies.set("justiceGovAgeVerified", "true", domain=".justice.gov")
 
     def _search_single(self, query: str):
         """Yield all Records for a single query term, handling pagination internally."""

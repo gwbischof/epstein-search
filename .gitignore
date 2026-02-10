@@ -20,3 +20,10 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
+
+# Credentials
+cookies.txt
+
+# Output
+reports/
+temp/
