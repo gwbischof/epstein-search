@@ -432,7 +432,7 @@ class VectorClient:
         payload = {"query": query, "limit": min(limit, 100)}
         if dataset is not None:
             payload["dataset"] = dataset
-        resp = self.session.post(f"{self.url}/search", json=payload, headers=headers, timeout=30)
+        resp = self.session.post(f"{self.url}/vector_search", json=payload, headers=headers, timeout=30)
         resp.raise_for_status()
         return resp.json()["results"]
 

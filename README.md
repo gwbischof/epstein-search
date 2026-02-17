@@ -117,6 +117,13 @@ To use a custom vector server URL:
 claude mcp add -s user epstein-search -e VECTOR_API_KEY=your-api-key -e VECTOR_URL=http://localhost:8000 -- uvx --from "git+https://github.com/gwbischof/epstein-search" epstein-search-mcp
 ```
 
+To update an existing MCP server (e.g. to add env vars), remove and re-add:
+
+```bash
+claude mcp remove -s user epstein-search
+claude mcp add -s user epstein-search -e VECTOR_API_KEY=your-api-key -- uvx --reinstall --from "git+https://github.com/gwbischof/epstein-search" epstein-search-mcp
+```
+
 ### Claude Desktop / Other MCP Clients
 
 Add to your MCP client config (e.g. `claude_desktop_config.json`):

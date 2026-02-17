@@ -136,7 +136,7 @@ def vector_search(query: str, n: int = 20, dataset: int | None = None) -> list[d
     payload = {"query": query, "limit": min(n, 100)}
     if dataset is not None:
         payload["dataset"] = dataset
-    resp = requests.post(f"{VECTOR_URL}/search", json=payload, headers=headers, timeout=30)
+    resp = requests.post(f"{VECTOR_URL}/vector_search", json=payload, headers=headers, timeout=30)
     resp.raise_for_status()
     return resp.json()["results"]
 
