@@ -1,9 +1,14 @@
+import os
 from dataclasses import fields
 from mcp.server.fastmcp import FastMCP
+import requests
 from client import EpsteinClient
 from pdf import generate_pdf as _generate_pdf, merge_markdown_to_pdf as _merge_markdown_to_pdf
 
 mcp = FastMCP("epstein-search")
+
+VECTOR_URL = os.environ.get("VECTOR_URL", "https://vector.korroni.cloud")
+VECTOR_API_KEY = os.environ.get("VECTOR_API_KEY", "")
 
 def _parse_queries(query: str) -> list[str]:
     """Split query on | for OR support."""
@@ -107,6 +112,33 @@ def extract_image(
     for record in client._extract_images(records, page=page, output_dir=output_dir):
         results.append(_record_to_dict(record))
     return results
+
+@mcp.tool()
+def vector_search(query: str, n: int = 20, dataset: int | None = None) -> list[dict]:
+    """
+    Semantic search over DOJ Epstein Library documents using vector embeddings.
+    Unlike keyword search, this finds documents by meaning — useful for concepts,
+    paraphrases, and questions that don't match exact keywords.
+
+    Args:
+        query: Natural language query (e.g. "payments to politicians",
+               "discussions about underage girls", "flight manifest entries").
+        n: Maximum number of results to return (default: 20, max: 100).
+        dataset: Filter to a specific dataset number (optional).
+
+    Returns:
+        A list of matching text chunks with efta_id, dataset, text, and
+        similarity score (0-1, higher is more relevant).
+    """
+    headers = {"Content-Type": "application/json"}
+    if VECTOR_API_KEY:
+        headers["X-API-Key"] = VECTOR_API_KEY
+    payload = {"query": query, "limit": min(n, 100)}
+    if dataset is not None:
+        payload["dataset"] = dataset
+    resp = requests.post(f"{VECTOR_URL}/search", json=payload, headers=headers, timeout=30)
+    resp.raise_for_status()
+    return resp.json()["results"]
 
 @mcp.tool()
 def generate_pdf(markdown_path: str, output_path: str | None = None) -> str:

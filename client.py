@@ -389,6 +389,58 @@ class EpsteinClient:
                 yield r
         print("", file=sys.stderr)
 
+class VectorClient:
+    """
+    Client for the epstein-vector semantic search API.
+
+    Usage:
+        client = VectorClient()
+        results = client.search("payments to politicians", limit=10)
+        for r in results:
+            print(r["efta_id"], r["score"], r["text"][:100])
+    """
+
+    def __init__(
+        self,
+        url: str | None = None,
+        api_key: str | None = None,
+    ):
+        self.url = (url or os.environ.get("VECTOR_URL", "https://vector.korroni.cloud")).rstrip("/")
+        self.api_key = api_key or os.environ.get("VECTOR_API_KEY", "")
+        self.session = requests.Session()
+
+    def search(
+        self,
+        query: str,
+        limit: int = 20,
+        dataset: int | None = None,
+    ) -> list[dict]:
+        """
+        Semantic search over Epstein documents.
+
+        Args:
+            query: Natural language query.
+            limit: Max results (1-100).
+            dataset: Filter to specific dataset number.
+
+        Returns:
+            List of dicts with efta_id, dataset, chunk_index, total_chunks, text, score.
+        """
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["X-API-Key"] = self.api_key
+        payload = {"query": query, "limit": min(limit, 100)}
+        if dataset is not None:
+            payload["dataset"] = dataset
+        resp = self.session.post(f"{self.url}/search", json=payload, headers=headers, timeout=30)
+        resp.raise_for_status()
+        return resp.json()["results"]
+
+    def health(self) -> dict:
+        resp = self.session.get(f"{self.url}/health", timeout=10)
+        resp.raise_for_status()
+        return resp.json()
+
 def main():
     """Example usage."""
     client = EpsteinClient()

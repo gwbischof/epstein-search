@@ -12,7 +12,7 @@ import argparse
 import json
 import sys
 from urllib.parse import quote
-from client import EpsteinClient
+from client import EpsteinClient, VectorClient
 
 def encode_url(url: str) -> str:
     """Encode spaces in URL to make it clickable."""
@@ -84,12 +84,43 @@ Examples:
         default=10,
         help="Number of parallel workers for --events (default: 10)"
     )
+    parser.add_argument(
+        "--vector",
+        action="store_true",
+        help="Use semantic vector search instead of keyword search"
+    )
+    parser.add_argument(
+        "--vector-url",
+        type=str,
+        default=None,
+        help="Vector search API URL (default: VECTOR_URL env or https://vector.korroni.cloud)"
+    )
+    parser.add_argument(
+        "-d", "--dataset",
+        type=int,
+        default=None,
+        help="Filter to specific dataset number (vector search only)"
+    )
 
     args = parser.parse_args()
 
     if not args.query:
         parser.print_help()
         sys.exit(1)
+
+    if args.vector:
+        vc = VectorClient(url=args.vector_url)
+        n = args.n if args.n > 0 else 20
+        results = vc.search(args.query, limit=n, dataset=args.dataset)
+        if args.json:
+            print(json.dumps(results, indent=2))
+        else:
+            for r in results:
+                print(f"{r['efta_id']}  (dataset {r['dataset']}, score {r['score']:.3f})")
+                text = r["text"][:200].replace("\n", " ")
+                print(f"  {text}...")
+                print()
+        return
 
     client = EpsteinClient()
     queries = [q.strip() for q in args.query.split("|")]

@@ -54,6 +54,12 @@ es "maxwell" -s 10
 # Output as JSON
 es "epstein" --json > results.json
 
+# Semantic vector search (finds by meaning, not keywords)
+es "payments to politicians" --vector
+es "discussions about underage girls" --vector -n 10
+es "flight manifest entries" --vector --dataset 9
+es "threats and intimidation" --vector --json
+
 # Check version
 es --version
 ```
@@ -67,6 +73,9 @@ Options:
 - `-c, --count` - Only show total result count (fast, single API call)
 - `-j, --json` - Output results as JSON
 - `-V, --version` - Show version
+- `--vector` - Use semantic vector search instead of keyword search
+- `--vector-url` - Custom vector search API URL (default: `VECTOR_URL` env or `https://vector.korroni.cloud`)
+- `-d, --dataset` - Filter to specific dataset number (vector search only)
 
 ## MCP Server
 
@@ -80,6 +89,7 @@ The MCP server exposes the full search functionality as tools for AI assistants 
 | `count` | Get total result count for a query (single API call) |
 | `extract_text` | Search + download PDFs + extract full text |
 | `extract_image` | Search + download PDFs + extract embedded images to disk |
+| `vector_search` | Semantic search using vector embeddings — finds documents by meaning |
 | `generate_pdf` | Convert a markdown file to a styled PDF |
 | `merge_markdown_to_pdf` | Merge multiple markdown files into a single PDF with page breaks and page numbers |
 
@@ -95,6 +105,18 @@ To auto-update on every launch (pulls latest from GitHub each time):
 claude mcp add -s user epstein-search -- uvx --reinstall --from "git+https://github.com/gwbischof/epstein-search" epstein-search-mcp
 ```
 
+To enable vector search, pass the API key as an environment variable:
+
+```bash
+claude mcp add -s user epstein-search -e VECTOR_API_KEY=your-api-key -- uvx --from "git+https://github.com/gwbischof/epstein-search" epstein-search-mcp
+```
+
+To use a custom vector server URL:
+
+```bash
+claude mcp add -s user epstein-search -e VECTOR_API_KEY=your-api-key -e VECTOR_URL=http://localhost:8000 -- uvx --from "git+https://github.com/gwbischof/epstein-search" epstein-search-mcp
+```
+
 ### Claude Desktop / Other MCP Clients
 
 Add to your MCP client config (e.g. `claude_desktop_config.json`):
@@ -104,7 +126,10 @@ Add to your MCP client config (e.g. `claude_desktop_config.json`):
   "mcpServers": {
     "epstein-search": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/gwbischof/epstein-search", "epstein-search-mcp"]
+      "args": ["--from", "git+https://github.com/gwbischof/epstein-search", "epstein-search-mcp"],
+      "env": {
+        "VECTOR_API_KEY": "your-api-key"
+      }
     }
   }
 }
@@ -138,7 +163,7 @@ uv add git+https://github.com/gwbischof/epstein-search
 ```
 
 ```python
-from client import EpsteinClient
+from client import EpsteinClient, VectorClient
 
 client = EpsteinClient()
 
@@ -165,6 +190,18 @@ for r in client.search("Trump"):
 # Get total count for a query (without fetching all results)
 count = client.count("Maxwell")
 print(f"Total results: {count}")
+
+# Semantic vector search (finds by meaning, not exact keywords)
+vc = VectorClient()  # defaults to https://vector.korroni.cloud
+for r in vc.search("payments to politicians", limit=10):
+    print(r["efta_id"], r["score"], r["text"][:100])
+
+# Filter by dataset
+for r in vc.search("flight manifest", limit=5, dataset=9):
+    print(r["efta_id"], r["text"][:100])
+
+# Custom server URL
+vc = VectorClient(url="http://localhost:8000", api_key="your-key")
 ```
 
 ## API Endpoint
