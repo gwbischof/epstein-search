@@ -409,10 +409,17 @@ class VectorClient:
         self.api_key = api_key or os.environ.get("VECTOR_API_KEY", "")
         self.session = requests.Session()
 
+    def _headers(self) -> dict:
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["X-API-Key"] = self.api_key
+        return headers
+
     def search(
         self,
         query: str,
         limit: int = 20,
+        offset: int = 0,
         dataset: int | None = None,
     ) -> list[dict]:
         """
@@ -421,18 +428,72 @@ class VectorClient:
         Args:
             query: Natural language query.
             limit: Max results (1-100).
+            offset: Skip first N results for pagination.
             dataset: Filter to specific dataset number.
 
         Returns:
             List of dicts with efta_id, dataset, chunk_index, total_chunks, text, score.
         """
-        headers = {"Content-Type": "application/json"}
-        if self.api_key:
-            headers["X-API-Key"] = self.api_key
-        payload = {"query": query, "limit": min(limit, 100)}
+        payload = {"query": query, "limit": min(limit, 100), "offset": offset}
         if dataset is not None:
             payload["dataset"] = dataset
-        resp = self.session.post(f"{self.url}/vector_search", json=payload, headers=headers, timeout=30)
+        resp = self.session.post(f"{self.url}/vector_search", json=payload, headers=self._headers(), timeout=30)
+        resp.raise_for_status()
+        return resp.json()["results"]
+
+    def text_search(
+        self,
+        query: str,
+        limit: int = 20,
+        offset: int = 0,
+        dataset: int | None = None,
+    ) -> list[dict]:
+        """
+        Keyword search over Epstein documents.
+
+        Supports AND (default), OR, NOT (-term), exact phrases ("..."), and wildcards (word*).
+
+        Args:
+            query: Search terms.
+            limit: Max results (1-100).
+            offset: Skip first N results for pagination.
+            dataset: Filter to specific dataset number.
+
+        Returns:
+            List of dicts with efta_id, dataset, word_count, rank, headline.
+        """
+        payload = {"query": query, "limit": min(limit, 100), "offset": offset}
+        if dataset is not None:
+            payload["dataset"] = dataset
+        resp = self.session.post(f"{self.url}/text_search", json=payload, headers=self._headers(), timeout=30)
+        resp.raise_for_status()
+        return resp.json()["results"]
+
+    def similarity_search(
+        self,
+        efta_id: str,
+        chunk_index: int = 0,
+        limit: int = 20,
+        offset: int = 0,
+        dataset: int | None = None,
+    ) -> list[dict]:
+        """
+        Find documents similar to an existing chunk.
+
+        Args:
+            efta_id: Source document ID.
+            chunk_index: Which chunk to use as the query vector (default: 0).
+            limit: Max results (1-100).
+            offset: Skip first N results for pagination.
+            dataset: Filter to specific dataset number.
+
+        Returns:
+            List of dicts with efta_id, dataset, chunk_index, total_chunks, text, score.
+        """
+        payload = {"efta_id": efta_id, "chunk_index": chunk_index, "limit": min(limit, 100), "offset": offset}
+        if dataset is not None:
+            payload["dataset"] = dataset
+        resp = self.session.post(f"{self.url}/similarity_search", json=payload, headers=self._headers(), timeout=30)
         resp.raise_for_status()
         return resp.json()["results"]
 

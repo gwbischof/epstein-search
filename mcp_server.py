@@ -141,6 +141,32 @@ def vector_search(query: str, n: int = 20, dataset: int | None = None) -> list[d
     return resp.json()["results"]
 
 @mcp.tool()
+def similarity_search(efta_id: str, chunk_index: int = 0, n: int = 20, dataset: int | None = None) -> list[dict]:
+    """
+    Find documents similar to a given document chunk using vector embeddings.
+    Uses the existing embedding of the source chunk — no re-encoding needed.
+
+    Args:
+        efta_id: The EFTA ID of the source document (e.g. "EFTA00123456").
+        chunk_index: Which chunk of the document to use as the query vector (default: 0).
+        n: Maximum number of results to return (default: 20, max: 100).
+        dataset: Filter to a specific dataset number (optional).
+
+    Returns:
+        A list of similar text chunks with efta_id, dataset, text, and
+        similarity score (0-1, higher is more relevant).
+    """
+    headers = {"Content-Type": "application/json"}
+    if VECTOR_API_KEY:
+        headers["X-API-Key"] = VECTOR_API_KEY
+    payload = {"efta_id": efta_id, "chunk_index": chunk_index, "limit": min(n, 100)}
+    if dataset is not None:
+        payload["dataset"] = dataset
+    resp = requests.post(f"{VECTOR_URL}/similarity_search", json=payload, headers=headers, timeout=30)
+    resp.raise_for_status()
+    return resp.json()["results"]
+
+@mcp.tool()
 def generate_pdf(markdown_path: str, output_path: str | None = None) -> str:
     """
     Convert a markdown file to a styled PDF.
