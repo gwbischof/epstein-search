@@ -167,6 +167,36 @@ def similarity_search(efta_id: str, chunk_index: int = 0, n: int = 20, dataset: 
     return resp.json()["results"]
 
 @mcp.tool()
+def fuzzy_search(query: str, n: int = 20, dataset: int | None = None, exclude_exact: bool = False) -> list[dict]:
+    """
+    Fuzzy trigram search over DOJ Epstein Library documents — typo-tolerant matching.
+    Finds documents even when the query contains OCR errors or misspellings.
+    For example, "Maxwel" finds "Maxwell", "fligth" finds "flight".
+
+    Args:
+        query: Search terms (e.g. "Maxwel", "fligth logs").
+        n: Maximum number of results to return (default: 20, max: 100).
+        dataset: Filter to a specific dataset number (optional).
+        exclude_exact: If True, exclude documents that keyword search already finds,
+                       showing only fuzzy-only matches (default: False).
+
+    Returns:
+        A list of matching documents with efta_id, dataset, word_count,
+        similarity score (0-1), and headline snippet.
+    """
+    headers = {"Content-Type": "application/json"}
+    if VECTOR_API_KEY:
+        headers["X-API-Key"] = VECTOR_API_KEY
+    payload = {"query": query, "limit": min(n, 100)}
+    if dataset is not None:
+        payload["dataset"] = dataset
+    if exclude_exact:
+        payload["exclude_exact"] = True
+    resp = requests.post(f"{VECTOR_URL}/fuzzy_search", json=payload, headers=headers, timeout=30)
+    resp.raise_for_status()
+    return resp.json()["results"]
+
+@mcp.tool()
 def generate_pdf(markdown_path: str, output_path: str | None = None) -> str:
     """
     Convert a markdown file to a styled PDF.

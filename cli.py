@@ -107,6 +107,16 @@ Examples:
         help="Use keyword search via vector API (supports AND, OR, NOT, phrases, wildcards)"
     )
     parser.add_argument(
+        "--fuzzy",
+        action="store_true",
+        help="Use fuzzy trigram search via vector API (typo-tolerant matching)"
+    )
+    parser.add_argument(
+        "--exclude-exact",
+        action="store_true",
+        help="With --fuzzy, hide documents that keyword search already finds"
+    )
+    parser.add_argument(
         "--similar",
         type=str,
         default=None,
@@ -138,6 +148,20 @@ Examples:
                 print(f"{r['efta_id']}  (dataset {r['dataset']}, score {r['score']:.3f})")
                 text = r["text"][:200].replace("\n", " ")
                 print(f"  {text}...")
+                print()
+        return
+
+    if args.fuzzy:
+        vc = VectorClient(url=args.vector_url)
+        n = args.n if args.n > 0 else 20
+        results = vc.fuzzy_search(args.query, limit=n, dataset=args.dataset, exclude_exact=args.exclude_exact)
+        if args.json:
+            print(json.dumps(results, indent=2))
+        else:
+            for r in results:
+                headline = r.get("headline", "").replace("<b>", "").replace("</b>", "")
+                print(f"{r['efta_id']}  (dataset {r['dataset']}, {r['similarity']:.1%} match, {r['word_count']} words)")
+                print(f"  {headline}")
                 print()
         return
 

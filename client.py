@@ -469,6 +469,38 @@ class VectorClient:
         resp.raise_for_status()
         return resp.json()["results"]
 
+    def fuzzy_search(
+        self,
+        query: str,
+        limit: int = 20,
+        offset: int = 0,
+        dataset: int | None = None,
+        exclude_exact: bool = False,
+    ) -> list[dict]:
+        """
+        Fuzzy trigram search over Epstein documents — typo-tolerant matching.
+
+        Finds documents even when the query contains OCR errors or misspellings.
+
+        Args:
+            query: Search terms (e.g. "Maxwel" finds "Maxwell").
+            limit: Max results (1-100).
+            offset: Skip first N results for pagination.
+            dataset: Filter to specific dataset number.
+            exclude_exact: If True, exclude documents that keyword search already finds.
+
+        Returns:
+            List of dicts with efta_id, dataset, word_count, similarity, headline.
+        """
+        payload = {"query": query, "limit": min(limit, 100), "offset": offset}
+        if dataset is not None:
+            payload["dataset"] = dataset
+        if exclude_exact:
+            payload["exclude_exact"] = True
+        resp = self.session.post(f"{self.url}/fuzzy_search", json=payload, headers=self._headers(), timeout=30)
+        resp.raise_for_status()
+        return resp.json()["results"]
+
     def similarity_search(
         self,
         efta_id: str,
