@@ -27,12 +27,16 @@ def _record_to_dict(r) -> dict:
 @mcp.tool()
 def search(query: str, n: int = 10, skip: int = 0) -> list[dict]:
     """
-    Search the DOJ Epstein Library for documents matching a query.
+    Keyword search the DOJ Epstein Library for documents matching exact terms.
+    This searches the DOJ's own index — use this when you need exact keyword
+    matches, wildcards, or phrase searches. For finding documents by meaning
+    or concept, use vector_search instead.
 
     Args:
         query: Search terms. Supports exact phrases ("flight logs"),
                wildcards (maxw*), required terms (+flight +logs),
                and OR queries with | ("pizza | flights").
+               Best for: specific names, document IDs, exact phrases.
         n: Maximum number of results to return (default: 10, 0 for all).
         skip: Number of results to skip for pagination (default: 0).
 
@@ -114,21 +118,56 @@ def extract_image(
     return results
 
 @mcp.tool()
-def vector_search(query: str, n: int = 20, dataset: int | None = None) -> list[dict]:
+def text_search(query: str, n: int = 20, dataset: int | None = None) -> list[dict]:
     """
-    Semantic search over DOJ Epstein Library documents using vector embeddings.
-    Unlike keyword search, this finds documents by meaning — useful for concepts,
-    paraphrases, and questions that don't match exact keywords.
+    Full-text keyword search over our own Postgres index of Epstein documents.
+    Faster than the DOJ search tool and supports the same query syntax.
+    Use this for exact word matching; use vector_search for meaning-based search.
 
     Args:
-        query: Natural language query (e.g. "payments to politicians",
-               "discussions about underage girls", "flight manifest entries").
+        query: Search terms. Supports:
+               - Plain terms: "Maxwell flight" (AND — both must appear)
+               - Exact phrase: '"wire transfer"'
+               - OR: "Maxwell OR Brunel"
+               - NOT: "island -vacation"
+               - Wildcard: "maxw*" (prefix match)
         n: Maximum number of results to return (default: 20, max: 100).
         dataset: Filter to a specific dataset number (optional).
 
     Returns:
-        A list of matching text chunks with efta_id, dataset, text, and
-        similarity score (0-1, higher is more relevant).
+        A list of matching documents with efta_id, dataset, word_count,
+        rank (relevance score), and headline (snippet with <b> highlights).
+    """
+    headers = {"Content-Type": "application/json"}
+    if VECTOR_API_KEY:
+        headers["X-API-Key"] = VECTOR_API_KEY
+    payload = {"query": query, "limit": min(n, 100)}
+    if dataset is not None:
+        payload["dataset"] = dataset
+    resp = requests.post(f"{VECTOR_URL}/text_search", json=payload, headers=headers, timeout=30)
+    resp.raise_for_status()
+    return resp.json()["results"]
+
+@mcp.tool()
+def vector_search(query: str, n: int = 20, dataset: int | None = None) -> list[dict]:
+    """
+    Semantic search over DOJ Epstein Library documents using vector embeddings.
+    Unlike keyword search, this finds documents by meaning — useful for concepts,
+    paraphrases, and situations that don't match exact keywords.
+
+    Tips for best results: phrase queries like document excerpts, not questions.
+    Good: "recruiting underage girls from schools", "payments to silence victims"
+    Bad: "did Epstein recruit from schools?", "were victims paid?"
+
+    Args:
+        query: Descriptive phrase matching the kind of content you're looking for.
+               Works best with noun phrases and descriptions rather than questions.
+        n: Maximum number of results to return (default: 20, max: 100).
+        dataset: Filter to a specific dataset number (optional).
+
+    Returns:
+        A list of matching text chunks with efta_id, dataset, chunk_index,
+        total_chunks, text, and score (0-1, higher is more relevant).
     """
     headers = {"Content-Type": "application/json"}
     if VECTOR_API_KEY:
@@ -145,6 +184,8 @@ def similarity_search(efta_id: str, chunk_index: int = 0, n: int = 20, dataset: 
     """
     Find documents similar to a given document chunk using vector embeddings.
     Uses the existing embedding of the source chunk — no re-encoding needed.
+    Great for finding related documents once you've found one interesting result
+    via vector_search, text_search, or keyword search.
 
     Args:
         efta_id: The EFTA ID of the source document (e.g. "EFTA00123456").
@@ -153,8 +194,8 @@ def similarity_search(efta_id: str, chunk_index: int = 0, n: int = 20, dataset: 
         dataset: Filter to a specific dataset number (optional).
 
     Returns:
-        A list of similar text chunks with efta_id, dataset, text, and
-        similarity score (0-1, higher is more relevant).
+        A list of similar text chunks with efta_id, dataset, chunk_index,
+        total_chunks, text, and score (0-1, higher is more relevant).
     """
     headers = {"Content-Type": "application/json"}
     if VECTOR_API_KEY:
@@ -169,20 +210,25 @@ def similarity_search(efta_id: str, chunk_index: int = 0, n: int = 20, dataset: 
 @mcp.tool()
 def fuzzy_search(query: str, n: int = 20, dataset: int | None = None, exclude_exact: bool = False) -> list[dict]:
     """
-    Fuzzy trigram search over DOJ Epstein Library documents — typo-tolerant matching.
-    Finds documents even when the query contains OCR errors or misspellings.
-    For example, "Maxwel" finds "Maxwell", "fligth" finds "flight".
+    Fuzzy trigram search over DOJ Epstein Library document chunks — typo-tolerant
+    matching. Finds documents even when the query or document contains OCR errors
+    or misspellings. For example, "Maxwel" finds "Maxwell", "Ghisliane" finds
+    "Ghislaine". Uses word_similarity to find the best matching substring within
+    each chunk.
+
+    Use this when: exact keyword search returns nothing due to typos/OCR errors,
+    or when searching for names that may be misspelled in scanned documents.
 
     Args:
-        query: Search terms (e.g. "Maxwel", "fligth logs").
+        query: Search terms, can include typos (e.g. "Maxwel", "Ghisliane").
         n: Maximum number of results to return (default: 20, max: 100).
         dataset: Filter to a specific dataset number (optional).
         exclude_exact: If True, exclude documents that keyword search already finds,
                        showing only fuzzy-only matches (default: False).
 
     Returns:
-        A list of matching documents with efta_id, dataset, word_count,
-        similarity score (0-1), and headline snippet.
+        A list of matching chunks with efta_id, dataset, chunk_index,
+        total_chunks, text, and similarity (0-1, higher is closer match).
     """
     headers = {"Content-Type": "application/json"}
     if VECTOR_API_KEY:
