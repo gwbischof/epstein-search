@@ -85,11 +85,14 @@ The MCP server exposes the full search functionality as tools for AI assistants 
 
 | Tool | Description |
 |------|-------------|
-| `search` | Search with `n`, `skip`, and OR queries via `\|` — returns full metadata and highlights |
+| `search` | DOJ keyword search with `n`, `skip`, and OR queries via `\|` — returns full metadata and highlights |
 | `count` | Get total result count for a query (single API call) |
 | `extract_text` | Search + download PDFs + extract full text |
 | `extract_image` | Search + download PDFs + extract embedded images to disk |
-| `vector_search` | Semantic search using vector embeddings — finds documents by meaning |
+| `text_search` | Full-text keyword search over our Postgres index — faster than DOJ search, supports AND, OR, NOT, phrases, wildcards |
+| `vector_search` | Semantic search using vector embeddings — finds documents by meaning, not keywords |
+| `fuzzy_search` | Typo-tolerant trigram search — finds matches even with OCR errors or misspellings |
+| `similarity_search` | Find documents similar to a given document chunk using its existing embedding |
 | `generate_pdf` | Convert a markdown file to a styled PDF |
 | `merge_markdown_to_pdf` | Merge multiple markdown files into a single PDF with page breaks and page numbers |
 
