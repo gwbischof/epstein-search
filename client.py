@@ -6,7 +6,6 @@ This client provides a clean interface to query it.
 """
 
 import os
-import re
 import sys
 import tempfile
 import requests
@@ -102,14 +101,10 @@ class EpsteinClient:
         self.session.headers.update({
             "Accept": "application/json",
         })
-        self.session.cookies.set("justiceGovAgeVerified", "true", domain=".justice.gov")
 
     def _get(self, url: str, **kwargs) -> requests.Response:
-        """GET with automatic auth challenge solving on 401/403."""
-        resp = self.session.get(url, **kwargs)
-        if resp.status_code in (401, 403) and "public_salt" in resp.text:
-                resp = self.session.get(url, **kwargs)
-        return resp
+        """GET request wrapper."""
+        return self.session.get(url, **kwargs)
 
     def _search_single(self, query: str):
         """Yield all Records for a single query term, handling pagination internally."""
