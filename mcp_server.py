@@ -85,7 +85,7 @@ def extract_image(
     return results
 
 @mcp.tool()
-def text_search(query: str, n: int = 20) -> list[dict]:
+def text_search(query: str, n: int = 20, offset: int = 0) -> list[dict]:
     """
     Keyword search over ~1M OCR'd Epstein documents. This is the default
     search tool — start here. Use vector_search for meaning-based search,
@@ -99,6 +99,7 @@ def text_search(query: str, n: int = 20) -> list[dict]:
                - NOT: "island -vacation"
                - Wildcard: "maxw*" (prefix match)
         n: Maximum number of results to return (default: 20, max: 100).
+        offset: Number of results to skip for pagination (default: 0).
 
     Returns:
         A list of matching documents with efta_id, dataset, word_count,
@@ -107,13 +108,13 @@ def text_search(query: str, n: int = 20) -> list[dict]:
     headers = {"Content-Type": "application/json"}
     if VECTOR_API_KEY:
         headers["X-API-Key"] = VECTOR_API_KEY
-    payload = {"query": query, "limit": min(n, 100)}
+    payload = {"query": query, "limit": min(n, 100), "offset": offset}
     resp = requests.post(f"{VECTOR_URL}/text_search", json=payload, headers=headers, timeout=30)
     resp.raise_for_status()
     return resp.json()["results"]
 
 @mcp.tool()
-def vector_search(query: str, n: int = 20) -> list[dict]:
+def vector_search(query: str, n: int = 20, offset: int = 0) -> list[dict]:
     """
     Semantic search over Epstein documents using vector embeddings.
     Unlike text_search, this finds documents by meaning — useful for concepts,
@@ -131,6 +132,7 @@ def vector_search(query: str, n: int = 20) -> list[dict]:
         query: Natural language query (e.g. "payments to politicians",
                "discussions about underage girls", "flight manifest entries").
         n: Maximum number of results to return (default: 20, max: 100).
+        offset: Number of results to skip for pagination (default: 0).
 
     Returns:
         A list of matching text chunks with efta_id, dataset, text,
@@ -139,13 +141,13 @@ def vector_search(query: str, n: int = 20) -> list[dict]:
     headers = {"Content-Type": "application/json"}
     if VECTOR_API_KEY:
         headers["X-API-Key"] = VECTOR_API_KEY
-    payload = {"query": query, "limit": min(n, 100)}
+    payload = {"query": query, "limit": min(n, 100), "offset": offset}
     resp = requests.post(f"{VECTOR_URL}/vector_search", json=payload, headers=headers, timeout=30)
     resp.raise_for_status()
     return resp.json()["results"]
 
 @mcp.tool()
-def similarity_search(efta_id: str, chunk_index: int = 0, n: int = 20) -> list[dict]:
+def similarity_search(efta_id: str, chunk_index: int = 0, n: int = 20, offset: int = 0) -> list[dict]:
     """
     Find documents similar to a given document chunk using vector embeddings.
     Uses the existing embedding of the source chunk — no re-encoding needed.
@@ -157,6 +159,7 @@ def similarity_search(efta_id: str, chunk_index: int = 0, n: int = 20) -> list[d
         efta_id: The EFTA ID of the source document (e.g. "EFTA00123456").
         chunk_index: Which chunk of the document to use as the query vector (default: 0).
         n: Maximum number of results to return (default: 20, max: 100).
+        offset: Number of results to skip for pagination (default: 0).
 
     Returns:
         A list of similar text chunks with efta_id, dataset, text,
@@ -165,13 +168,13 @@ def similarity_search(efta_id: str, chunk_index: int = 0, n: int = 20) -> list[d
     headers = {"Content-Type": "application/json"}
     if VECTOR_API_KEY:
         headers["X-API-Key"] = VECTOR_API_KEY
-    payload = {"efta_id": efta_id, "chunk_index": chunk_index, "limit": min(n, 100)}
+    payload = {"efta_id": efta_id, "chunk_index": chunk_index, "limit": min(n, 100), "offset": offset}
     resp = requests.post(f"{VECTOR_URL}/similarity_search", json=payload, headers=headers, timeout=30)
     resp.raise_for_status()
     return resp.json()["results"]
 
 @mcp.tool()
-def fuzzy_search(query: str, n: int = 20, exclude_exact: bool = False) -> list[dict]:
+def fuzzy_search(query: str, n: int = 20, offset: int = 0, exclude_exact: bool = False) -> list[dict]:
     """
     Fuzzy trigram search over Epstein document chunks — typo-tolerant
     matching. Finds documents even when the query or document contains OCR errors
@@ -185,6 +188,7 @@ def fuzzy_search(query: str, n: int = 20, exclude_exact: bool = False) -> list[d
     Args:
         query: Search terms, can include typos (e.g. "Maxwel", "Ghisliane").
         n: Maximum number of results to return (default: 20, max: 100).
+        offset: Number of results to skip for pagination (default: 0).
         exclude_exact: If True, exclude documents that keyword search already finds,
                        showing only fuzzy-only matches (default: False).
 
@@ -195,7 +199,7 @@ def fuzzy_search(query: str, n: int = 20, exclude_exact: bool = False) -> list[d
     headers = {"Content-Type": "application/json"}
     if VECTOR_API_KEY:
         headers["X-API-Key"] = VECTOR_API_KEY
-    payload = {"query": query, "limit": min(n, 100)}
+    payload = {"query": query, "limit": min(n, 100), "offset": offset}
     if exclude_exact:
         payload["exclude_exact"] = True
     resp = requests.post(f"{VECTOR_URL}/fuzzy_search", json=payload, headers=headers, timeout=30)
