@@ -57,7 +57,6 @@ es "epstein" --json > results.json
 # Semantic vector search (finds by meaning, not keywords)
 es "payments to politicians" --vector
 es "discussions about underage girls" --vector -n 10
-es "flight manifest entries" --vector --dataset 9
 es "threats and intimidation" --vector --json
 
 # Check version
@@ -74,8 +73,12 @@ Options:
 - `-j, --json` - Output results as JSON
 - `-V, --version` - Show version
 - `--vector` - Use semantic vector search instead of keyword search
+- `--keyword` - Use keyword search via vector API (supports AND, OR, NOT, phrases, wildcards)
+- `--fuzzy` - Use fuzzy trigram search via vector API (typo-tolerant matching)
+- `--exclude-exact` - With `--fuzzy`, hide documents that keyword search already finds
+- `--similar EFTA_ID` - Find documents similar to this EFTA ID (via vector API)
+- `--chunk N` - Chunk index for `--similar` (default: 0)
 - `--vector-url` - Custom vector search API URL (default: `VECTOR_URL` env or `https://vector.korroni.cloud`)
-- `-d, --dataset` - Filter to specific dataset number (vector search only)
 
 ## MCP Server
 
@@ -206,9 +209,17 @@ vc = VectorClient()  # defaults to https://vector.korroni.cloud
 for r in vc.search("payments to politicians", limit=10):
     print(r["efta_id"], r["score"], r["text"][:100])
 
-# Filter by dataset
-for r in vc.search("flight manifest", limit=5, dataset=9):
-    print(r["efta_id"], r["text"][:100])
+# Keyword search via vector API
+for r in vc.text_search("Maxwell flight", limit=10):
+    print(r["efta_id"], r["headline"])
+
+# Fuzzy search (typo-tolerant)
+for r in vc.fuzzy_search("Maxwel", limit=10):
+    print(r["efta_id"], r["similarity"], r["text"][:100])
+
+# Count matching documents
+print(vc.text_search_count("Maxwell"))
+print(vc.fuzzy_search_count("Maxwel"))
 
 # Custom server URL
 vc = VectorClient(url="http://localhost:8000", api_key="your-key")

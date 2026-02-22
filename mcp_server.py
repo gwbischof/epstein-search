@@ -118,7 +118,7 @@ def extract_image(
     return results
 
 @mcp.tool()
-def text_search(query: str, n: int = 20, dataset: int | None = None) -> list[dict]:
+def text_search(query: str, n: int = 20) -> list[dict]:
     """
     Full-text keyword search over our own Postgres index of Epstein documents.
     Faster than the DOJ search tool and supports the same query syntax.
@@ -132,7 +132,6 @@ def text_search(query: str, n: int = 20, dataset: int | None = None) -> list[dic
                - NOT: "island -vacation"
                - Wildcard: "maxw*" (prefix match)
         n: Maximum number of results to return (default: 20, max: 100).
-        dataset: Filter to a specific dataset number (optional).
 
     Returns:
         A list of matching documents with efta_id, dataset, word_count,
@@ -142,14 +141,12 @@ def text_search(query: str, n: int = 20, dataset: int | None = None) -> list[dic
     if VECTOR_API_KEY:
         headers["X-API-Key"] = VECTOR_API_KEY
     payload = {"query": query, "limit": min(n, 100)}
-    if dataset is not None:
-        payload["dataset"] = dataset
     resp = requests.post(f"{VECTOR_URL}/text_search", json=payload, headers=headers, timeout=30)
     resp.raise_for_status()
     return resp.json()["results"]
 
 @mcp.tool()
-def vector_search(query: str, n: int = 20, dataset: int | None = None) -> list[dict]:
+def vector_search(query: str, n: int = 20) -> list[dict]:
     """
     Semantic search over DOJ Epstein Library documents using vector embeddings.
     Unlike keyword search, this finds documents by meaning — useful for concepts,
@@ -163,7 +160,6 @@ def vector_search(query: str, n: int = 20, dataset: int | None = None) -> list[d
         query: Descriptive phrase matching the kind of content you're looking for.
                Works best with noun phrases and descriptions rather than questions.
         n: Maximum number of results to return (default: 20, max: 100).
-        dataset: Filter to a specific dataset number (optional).
 
     Returns:
         A list of matching text chunks with efta_id, dataset, chunk_index,
@@ -173,14 +169,12 @@ def vector_search(query: str, n: int = 20, dataset: int | None = None) -> list[d
     if VECTOR_API_KEY:
         headers["X-API-Key"] = VECTOR_API_KEY
     payload = {"query": query, "limit": min(n, 100)}
-    if dataset is not None:
-        payload["dataset"] = dataset
     resp = requests.post(f"{VECTOR_URL}/vector_search", json=payload, headers=headers, timeout=30)
     resp.raise_for_status()
     return resp.json()["results"]
 
 @mcp.tool()
-def similarity_search(efta_id: str, chunk_index: int = 0, n: int = 20, dataset: int | None = None) -> list[dict]:
+def similarity_search(efta_id: str, chunk_index: int = 0, n: int = 20) -> list[dict]:
     """
     Find documents similar to a given document chunk using vector embeddings.
     Uses the existing embedding of the source chunk — no re-encoding needed.
@@ -191,7 +185,6 @@ def similarity_search(efta_id: str, chunk_index: int = 0, n: int = 20, dataset: 
         efta_id: The EFTA ID of the source document (e.g. "EFTA00123456").
         chunk_index: Which chunk of the document to use as the query vector (default: 0).
         n: Maximum number of results to return (default: 20, max: 100).
-        dataset: Filter to a specific dataset number (optional).
 
     Returns:
         A list of similar text chunks with efta_id, dataset, chunk_index,
@@ -201,14 +194,12 @@ def similarity_search(efta_id: str, chunk_index: int = 0, n: int = 20, dataset: 
     if VECTOR_API_KEY:
         headers["X-API-Key"] = VECTOR_API_KEY
     payload = {"efta_id": efta_id, "chunk_index": chunk_index, "limit": min(n, 100)}
-    if dataset is not None:
-        payload["dataset"] = dataset
     resp = requests.post(f"{VECTOR_URL}/similarity_search", json=payload, headers=headers, timeout=30)
     resp.raise_for_status()
     return resp.json()["results"]
 
 @mcp.tool()
-def fuzzy_search(query: str, n: int = 20, dataset: int | None = None, exclude_exact: bool = False) -> list[dict]:
+def fuzzy_search(query: str, n: int = 20, exclude_exact: bool = False) -> list[dict]:
     """
     Fuzzy trigram search over DOJ Epstein Library document chunks — typo-tolerant
     matching. Finds documents even when the query or document contains OCR errors
@@ -222,7 +213,6 @@ def fuzzy_search(query: str, n: int = 20, dataset: int | None = None, exclude_ex
     Args:
         query: Search terms, can include typos (e.g. "Maxwel", "Ghisliane").
         n: Maximum number of results to return (default: 20, max: 100).
-        dataset: Filter to a specific dataset number (optional).
         exclude_exact: If True, exclude documents that keyword search already finds,
                        showing only fuzzy-only matches (default: False).
 
@@ -234,8 +224,6 @@ def fuzzy_search(query: str, n: int = 20, dataset: int | None = None, exclude_ex
     if VECTOR_API_KEY:
         headers["X-API-Key"] = VECTOR_API_KEY
     payload = {"query": query, "limit": min(n, 100)}
-    if dataset is not None:
-        payload["dataset"] = dataset
     if exclude_exact:
         payload["exclude_exact"] = True
     resp = requests.post(f"{VECTOR_URL}/fuzzy_search", json=payload, headers=headers, timeout=30)

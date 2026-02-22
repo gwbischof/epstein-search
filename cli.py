@@ -96,12 +96,6 @@ Examples:
         help="Vector search API URL (default: VECTOR_URL env or https://vector.korroni.cloud)"
     )
     parser.add_argument(
-        "-d", "--dataset",
-        type=int,
-        default=None,
-        help="Filter to specific dataset number (vector search only)"
-    )
-    parser.add_argument(
         "--keyword",
         action="store_true",
         help="Use keyword search via vector API (supports AND, OR, NOT, phrases, wildcards)"
@@ -139,7 +133,7 @@ Examples:
     if args.similar:
         vc = VectorClient(url=args.vector_url)
         n = args.n if args.n > 0 else 20
-        results = vc.similarity_search(args.similar, chunk_index=args.chunk, limit=n, dataset=args.dataset)
+        results = vc.similarity_search(args.similar, chunk_index=args.chunk, limit=n)
         if args.json:
             print(json.dumps(results, indent=2))
         else:
@@ -154,7 +148,7 @@ Examples:
     if args.fuzzy:
         vc = VectorClient(url=args.vector_url)
         n = args.n if args.n > 0 else 20
-        results = vc.fuzzy_search(args.query, limit=n, dataset=args.dataset, exclude_exact=args.exclude_exact)
+        results = vc.fuzzy_search(args.query, limit=n, exclude_exact=args.exclude_exact)
         if args.json:
             print(json.dumps(results, indent=2))
         else:
@@ -168,7 +162,7 @@ Examples:
     if args.keyword:
         vc = VectorClient(url=args.vector_url)
         n = args.n if args.n > 0 else 20
-        results = vc.text_search(args.query, limit=n, dataset=args.dataset)
+        results = vc.text_search(args.query, limit=n)
         if args.json:
             print(json.dumps(results, indent=2))
         else:
@@ -183,7 +177,7 @@ Examples:
     if args.vector:
         vc = VectorClient(url=args.vector_url)
         n = args.n if args.n > 0 else 20
-        results = vc.search(args.query, limit=n, dataset=args.dataset)
+        results = vc.search(args.query, limit=n)
         if args.json:
             print(json.dumps(results, indent=2))
         else:
