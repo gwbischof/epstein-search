@@ -14,10 +14,10 @@ The easiest way to install this tool may be to ask your AI coding agent to do it
 
 ```bash
 # Install the `es` command globally
-uv tool install git+https://github.com/gwbischof/epstein-search
+uv tool install git+https://git.corroborators.wiki/korroni/epstein-search
 
 # Or install from a local clone
-git clone https://github.com/gwbischof/epstein-search
+git clone https://git.corroborators.wiki/korroni/epstein-search
 uv tool install ./epstein-search
 ```
 
@@ -82,87 +82,47 @@ Options:
 
 ## MCP Server
 
-The MCP server exposes the full search functionality as tools for AI assistants (Claude, etc.).
+An MCP server that gives AI assistants (Claude Code, Claude Desktop, etc.) direct access to search ~1M Epstein documents.
+
+### Setup
+
+```bash
+# Clone the repo
+git clone https://git.corroborators.wiki/korroni/epstein-search
+cd epstein-search
+
+# Install the MCP server into Claude Code
+claude mcp add -s user epstein-search \
+  -e VECTOR_API_KEY=your-api-key \
+  -- uvx --from /path/to/epstein-search epstein-search-mcp
+```
+
+Replace `/path/to/epstein-search` with the actual path to your clone, and `your-api-key` with a vector search API key.
+
+To update, `git pull` and restart Claude Code. To change settings, remove and re-add:
+
+```bash
+claude mcp remove -s user epstein-search
+```
 
 ### Tools
 
 | Tool | Description |
 |------|-------------|
-| `search` | DOJ keyword search with `n`, `skip`, and OR queries via `\|` — returns full metadata and highlights |
-| `count` | Get total result count for a query (single API call) |
-| `extract_text` | Search + download PDFs + extract full text |
-| `extract_image` | Search + download PDFs + extract embedded images to disk |
-| `text_search` | Full-text keyword search over our Postgres index — faster than DOJ search, supports AND, OR, NOT, phrases, wildcards |
-| `vector_search` | Semantic search using vector embeddings — finds documents by meaning, not keywords |
-| `fuzzy_search` | Typo-tolerant trigram search — finds matches even with OCR errors or misspellings |
-| `similarity_search` | Find documents similar to a given document chunk using its existing embedding |
-| `generate_pdf` | Convert a markdown file to a styled PDF |
-| `merge_markdown_to_pdf` | Merge multiple markdown files into a single PDF with page breaks and page numbers |
-
-### Claude Code
-
-```bash
-claude mcp add -s user epstein-search -- uvx --from "git+https://github.com/gwbischof/epstein-search" epstein-search-mcp
-```
-
-To auto-update on every launch (pulls latest from GitHub each time):
-
-```bash
-claude mcp add -s user epstein-search -- uvx --reinstall --from "git+https://github.com/gwbischof/epstein-search" epstein-search-mcp
-```
-
-To enable vector search, pass the API key as an environment variable:
-
-```bash
-claude mcp add -s user epstein-search -e VECTOR_API_KEY=your-api-key -- uvx --from "git+https://github.com/gwbischof/epstein-search" epstein-search-mcp
-```
-
-To use a custom vector server URL:
-
-```bash
-claude mcp add -s user epstein-search -e VECTOR_API_KEY=your-api-key -e VECTOR_URL=http://localhost:8000 -- uvx --from "git+https://github.com/gwbischof/epstein-search" epstein-search-mcp
-```
-
-To update an existing MCP server (e.g. to add env vars), remove and re-add:
-
-```bash
-claude mcp remove -s user epstein-search
-claude mcp add -s user epstein-search -e VECTOR_API_KEY=your-api-key -- uvx --reinstall --from "git+https://github.com/gwbischof/epstein-search" epstein-search-mcp
-```
-
-### Claude Desktop / Other MCP Clients
-
-Add to your MCP client config (e.g. `claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "epstein-search": {
-      "command": "uvx",
-      "args": ["--from", "git+https://github.com/gwbischof/epstein-search", "epstein-search-mcp"],
-      "env": {
-        "VECTOR_API_KEY": "your-api-key"
-      }
-    }
-  }
-}
-```
-
-### Local Development
-
-```bash
-# Run the MCP server directly
-uv run mcp_server.py
-
-# Test with the MCP Inspector
-mcp dev mcp_server.py
-```
+| `text_search` | Keyword search — supports AND, OR, NOT, phrases, wildcards |
+| `vector_search` | Semantic search — finds documents by meaning, not keywords |
+| `fuzzy_search` | Typo-tolerant search — catches OCR errors and misspellings |
+| `similarity_search` | Find documents similar to a given document |
+| `extract_text` | Download a PDF and extract its full text |
+| `extract_image` | Download a PDF and extract embedded images |
+| `generate_pdf` | Convert markdown to a styled PDF |
+| `merge_markdown_to_pdf` | Merge multiple markdown files into one PDF |
 
 ## Updating
 
 ```bash
 # Reinstall from GitHub
-uv tool install --force --reinstall epstein-search --from git+https://github.com/gwbischof/epstein-search
+uv tool install --force --reinstall epstein-search --from git+https://git.corroborators.wiki/korroni/epstein-search
 
 # Or from a local clone
 uv tool install --force --reinstall epstein-search --from /path/to/epstein-search
@@ -172,7 +132,7 @@ uv tool install --force --reinstall epstein-search --from /path/to/epstein-searc
 
 ```bash
 # Install as a library
-uv add git+https://github.com/gwbischof/epstein-search
+uv add git+https://git.corroborators.wiki/korroni/epstein-search
 ```
 
 ```python
