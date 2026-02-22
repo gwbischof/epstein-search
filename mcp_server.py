@@ -25,53 +25,18 @@ def _record_to_dict(r) -> dict:
     return d
 
 @mcp.tool()
-def search(query: str, n: int = 10, skip: int = 0) -> list[dict]:
-    """
-    Keyword search the DOJ Epstein Library for documents matching exact terms.
-    This searches the DOJ's own index — use this when you need exact keyword
-    matches, wildcards, or phrase searches. For finding documents by meaning
-    or concept, use vector_search instead.
-
-    Args:
-        query: Search terms. Supports exact phrases ("flight logs"),
-               wildcards (maxw*), required terms (+flight +logs),
-               and OR queries with | ("pizza | flights").
-               Best for: specific names, document IDs, exact phrases.
-        n: Maximum number of results to return (default: 10, 0 for all).
-        skip: Number of results to skip for pagination (default: 0).
-
-    Returns:
-        A list of matching document records with metadata and text highlights.
-    """
-    client = EpsteinClient()
-    queries = _parse_queries(query)
-    results = []
-    for record in client.search(queries, n=n or None, skip=skip):
-        results.append(_record_to_dict(record))
-    return results
-
-@mcp.tool()
-def count(query: str) -> int:
-    """
-    Count the total number of documents matching a query in the DOJ Epstein Library.
-
-    Args:
-        query: Search terms (same syntax as search, but does not support OR queries with |).
-
-    Returns:
-        The total number of matching documents.
-    """
-    client = EpsteinClient()
-    return client.count(query)
-
-@mcp.tool()
 def extract_text(query: str, n: int = 1, skip: int = 0) -> list[dict]:
     """
-    Search the DOJ Epstein Library, download the matching PDFs, and extract
-    the full text content from each document.
+    Download PDFs from the DOJ Epstein Library and extract the full text.
+
+    Use this when you need the full text of a document, not just a snippet.
+    You can pass an EFTA ID directly (e.g. "EFTA00123456") or search terms.
+    Slower than text_search because it downloads and parses each PDF.
 
     Args:
-        query: Search terms (same syntax as search).
+        query: An EFTA document ID (e.g. "EFTA00123456") or search terms.
+               Search supports exact phrases ("flight logs"), wildcards (maxw*),
+               required terms (+flight +logs), and OR queries with | ("pizza | flights").
         n: Maximum number of documents to process (default: 1, 0 for all).
         skip: Number of results to skip (default: 0).
 
@@ -95,11 +60,13 @@ def extract_image(
     output_dir: str = "temp",
 ) -> list[dict]:
     """
-    Search the DOJ Epstein Library, download matching PDFs, and extract
-    embedded images from each document.
+    Download PDFs from the DOJ Epstein Library and extract embedded images.
+    Images are saved to disk.
 
     Args:
-        query: Search terms (same syntax as search).
+        query: An EFTA document ID (e.g. "EFTA00123456") or search terms.
+               Search supports exact phrases ("flight logs"), wildcards (maxw*),
+               required terms (+flight +logs), and OR queries with | ("pizza | flights").
         n: Maximum number of documents to process (default: 1, 0 for all).
         skip: Number of results to skip (default: 0).
         page: Page number (1-indexed) to extract images from. If omitted, extracts from all pages.
@@ -120,9 +87,9 @@ def extract_image(
 @mcp.tool()
 def text_search(query: str, n: int = 20) -> list[dict]:
     """
-    Full-text keyword search over our own Postgres index of Epstein documents.
-    Faster than the DOJ search tool and supports the same query syntax.
-    Use this for exact word matching; use vector_search for meaning-based search.
+    Keyword search over ~1M OCR'd Epstein documents. This is the default
+    search tool — start here. Use vector_search for meaning-based search,
+    or fuzzy_search to catch OCR errors and misspellings.
 
     Args:
         query: Search terms. Supports:
@@ -135,7 +102,7 @@ def text_search(query: str, n: int = 20) -> list[dict]:
 
     Returns:
         A list of matching documents with efta_id, dataset, word_count,
-        rank (relevance score), and headline (snippet with <b> highlights).
+        rank (relevance score), and headline (snippet with matched terms).
     """
     headers = {"Content-Type": "application/json"}
     if VECTOR_API_KEY:
@@ -148,22 +115,26 @@ def text_search(query: str, n: int = 20) -> list[dict]:
 @mcp.tool()
 def vector_search(query: str, n: int = 20) -> list[dict]:
     """
-    Semantic search over DOJ Epstein Library documents using vector embeddings.
-    Unlike keyword search, this finds documents by meaning — useful for concepts,
-    paraphrases, and situations that don't match exact keywords.
+    Semantic search over Epstein documents using vector embeddings.
+    Unlike text_search, this finds documents by meaning — useful for concepts,
+    paraphrases, and topics that don't match exact keywords.
 
-    Tips for best results: phrase queries like document excerpts, not questions.
+    Use this when: you're looking for a concept or situation rather than specific
+    words, or when text_search returns irrelevant results because the documents
+    use different terminology.
+
+    Tips: phrase queries as descriptive statements, not questions.
     Good: "recruiting underage girls from schools", "payments to silence victims"
     Bad: "did Epstein recruit from schools?", "were victims paid?"
 
     Args:
-        query: Descriptive phrase matching the kind of content you're looking for.
-               Works best with noun phrases and descriptions rather than questions.
+        query: Natural language query (e.g. "payments to politicians",
+               "discussions about underage girls", "flight manifest entries").
         n: Maximum number of results to return (default: 20, max: 100).
 
     Returns:
-        A list of matching text chunks with efta_id, dataset, chunk_index,
-        total_chunks, text, and score (0-1, higher is more relevant).
+        A list of matching text chunks with efta_id, dataset, text,
+        and similarity score (0-1, higher is more relevant).
     """
     headers = {"Content-Type": "application/json"}
     if VECTOR_API_KEY:
@@ -178,8 +149,9 @@ def similarity_search(efta_id: str, chunk_index: int = 0, n: int = 20) -> list[d
     """
     Find documents similar to a given document chunk using vector embeddings.
     Uses the existing embedding of the source chunk — no re-encoding needed.
-    Great for finding related documents once you've found one interesting result
-    via vector_search, text_search, or keyword search.
+
+    Use this as a follow-up after finding an interesting document via
+    text_search or vector_search — it finds other documents with similar content.
 
     Args:
         efta_id: The EFTA ID of the source document (e.g. "EFTA00123456").
@@ -187,8 +159,8 @@ def similarity_search(efta_id: str, chunk_index: int = 0, n: int = 20) -> list[d
         n: Maximum number of results to return (default: 20, max: 100).
 
     Returns:
-        A list of similar text chunks with efta_id, dataset, chunk_index,
-        total_chunks, text, and score (0-1, higher is more relevant).
+        A list of similar text chunks with efta_id, dataset, text,
+        and similarity score (0-1, higher is more relevant).
     """
     headers = {"Content-Type": "application/json"}
     if VECTOR_API_KEY:
@@ -201,14 +173,14 @@ def similarity_search(efta_id: str, chunk_index: int = 0, n: int = 20) -> list[d
 @mcp.tool()
 def fuzzy_search(query: str, n: int = 20, exclude_exact: bool = False) -> list[dict]:
     """
-    Fuzzy trigram search over DOJ Epstein Library document chunks — typo-tolerant
+    Fuzzy trigram search over Epstein document chunks — typo-tolerant
     matching. Finds documents even when the query or document contains OCR errors
     or misspellings. For example, "Maxwel" finds "Maxwell", "Ghisliane" finds
     "Ghislaine". Uses word_similarity to find the best matching substring within
     each chunk.
 
-    Use this when: exact keyword search returns nothing due to typos/OCR errors,
-    or when searching for names that may be misspelled in scanned documents.
+    Use this to catch OCR errors and misspellings that text_search misses.
+    Many documents are poorly scanned, so names and terms are often garbled.
 
     Args:
         query: Search terms, can include typos (e.g. "Maxwel", "Ghisliane").
