@@ -110,8 +110,10 @@ claude mcp remove -s user epstein-search
 | Tool | Description |
 |------|-------------|
 | `text_search` | Keyword search — supports AND, OR, NOT, phrases, wildcards |
+| `text_search_count` | Count chunks matching a keyword query (without returning results) |
 | `vector_search` | Semantic search — finds documents by meaning, not keywords |
 | `fuzzy_search` | Typo-tolerant search — catches OCR errors and misspellings |
+| `fuzzy_search_count` | Count chunks matching a fuzzy query (without returning results) |
 | `similarity_search` | Find documents similar to a given document |
 | `extract_text` | Download a PDF and extract its full text |
 | `extract_image` | Download a PDF and extract embedded images |
