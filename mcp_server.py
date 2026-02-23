@@ -25,33 +25,6 @@ def _record_to_dict(r) -> dict:
     return d
 
 @mcp.tool()
-def extract_text(query: str, n: int = 1, skip: int = 0) -> list[dict]:
-    """
-    Download PDFs from the DOJ Epstein Library and extract the full text.
-
-    Use this when you need the full text of a document, not just a snippet.
-    You can pass an EFTA ID directly (e.g. "EFTA00123456") or search terms.
-    Slower than text_search because it downloads and parses each PDF.
-
-    Args:
-        query: An EFTA document ID (e.g. "EFTA00123456") or search terms.
-               Search supports exact phrases ("flight logs"), wildcards (maxw*),
-               required terms (+flight +logs), and OR queries with | ("pizza | flights").
-        n: Maximum number of documents to process (default: 1, 0 for all).
-        skip: Number of results to skip (default: 0).
-
-    Returns:
-        A list of records with all metadata plus the full extracted text.
-    """
-    client = EpsteinClient()
-    queries = _parse_queries(query)
-    records = client.search(queries, n=n or None, skip=skip)
-    results = []
-    for record in client._extract_text(records):
-        results.append(_record_to_dict(record))
-    return results
-
-@mcp.tool()
 def extract_image(
     query: str,
     n: int = 1,
@@ -248,6 +221,29 @@ def fuzzy_search_count(query: str) -> int:
     resp = requests.post(f"{VECTOR_URL}/fuzzy_search/count", json=payload, headers=headers, timeout=180)
     resp.raise_for_status()
     return resp.json()["count"]
+
+@mcp.tool()
+def get_document(efta_id: str) -> dict:
+    """
+    Fetch a single document by its EFTA ID from the vector database.
+    Returns the full document record including text, metadata, and version.
+
+    Use this when you already know the EFTA ID and want the complete document
+    without searching. Faster than extract_text because it reads from the
+    database instead of downloading and parsing the PDF.
+
+    Args:
+        efta_id: The EFTA document ID (e.g. "EFTA00123456").
+
+    Returns:
+        A dict with efta_id, dataset, url, pages, word_count, text, and version.
+    """
+    headers = {"Content-Type": "application/json"}
+    if VECTOR_API_KEY:
+        headers["X-API-Key"] = VECTOR_API_KEY
+    resp = requests.get(f"{VECTOR_URL}/documents/{efta_id}", headers=headers, timeout=30)
+    resp.raise_for_status()
+    return resp.json()
 
 @mcp.tool()
 def generate_pdf(markdown_path: str, output_path: str | None = None) -> str:

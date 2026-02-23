@@ -123,8 +123,32 @@ Examples:
         default=0,
         help="Chunk index for --similar (default: 0)"
     )
+    parser.add_argument(
+        "--doc",
+        type=str,
+        default=None,
+        metavar="EFTA_ID",
+        help="Fetch a single document by EFTA ID (via vector API)"
+    )
 
     args = parser.parse_args()
+
+    if args.doc:
+        vc = VectorClient(url=args.vector_url)
+        try:
+            doc = vc.get_document(args.doc)
+        except Exception as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+        if args.json:
+            print(json.dumps(doc, indent=2))
+        else:
+            print(f"{doc['efta_id']}  (dataset {doc['dataset']}, {doc['word_count']} words, {doc['pages']} pages, v{doc['version']})")
+            print(f"  {doc.get('url', '')}")
+            if doc.get("text"):
+                print()
+                print(doc["text"])
+        return
 
     if not args.query:
         parser.print_help()

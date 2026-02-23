@@ -522,6 +522,23 @@ class VectorClient:
         resp.raise_for_status()
         return resp.json()["results"]
 
+    def get_document(self, efta_id: str) -> dict:
+        """
+        Fetch a single document by EFTA ID.
+
+        Args:
+            efta_id: Document ID (e.g. "EFTA00123456").
+
+        Returns:
+            Dict with efta_id, dataset, url, pages, word_count, text, version.
+
+        Raises:
+            requests.HTTPError: 404 if document not found.
+        """
+        resp = self.session.get(f"{self.url}/documents/{efta_id}", headers=self._headers(), timeout=30)
+        resp.raise_for_status()
+        return resp.json()
+
     def health(self) -> dict:
         resp = self.session.get(f"{self.url}/health", timeout=10)
         resp.raise_for_status()
