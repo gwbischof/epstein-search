@@ -449,7 +449,7 @@ class VectorClient:
             offset: Skip first N results for pagination.
 
         Returns:
-            List of dicts with efta_id, dataset, word_count, rank, headline.
+            List of dicts with efta_id, dataset, chunk_index, total_chunks, word_count, rank, headline.
         """
         payload = {"query": query, "limit": min(limit, 100), "offset": offset}
         resp = self.session.post(f"{self.url}/text_search", json=payload, headers=self._headers(), timeout=30)

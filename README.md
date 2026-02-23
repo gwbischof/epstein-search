@@ -73,7 +73,7 @@ Options:
 - `-j, --json` - Output results as JSON
 - `-V, --version` - Show version
 - `--vector` - Use semantic vector search instead of keyword search
-- `--keyword` - Use keyword search via vector API (supports AND, OR, NOT, phrases, wildcards)
+- `--keyword` - Use keyword search via vector API (supports AND, OR, NOT, phrases, wildcards). Returns chunk-level results with `chunk_index` and `total_chunks`
 - `--fuzzy` - Use fuzzy trigram search via vector API (typo-tolerant matching)
 - `--exclude-exact` - With `--fuzzy`, hide documents that keyword search already finds
 - `--similar EFTA_ID` - Find documents similar to this EFTA ID (via vector API)

@@ -102,8 +102,9 @@ def text_search(query: str, n: int = 20, offset: int = 0) -> list[dict]:
         offset: Number of results to skip for pagination (default: 0).
 
     Returns:
-        A list of matching documents with efta_id, dataset, word_count,
-        rank (relevance score), and headline (snippet with matched terms).
+        A list of matching chunks with efta_id, dataset, chunk_index,
+        total_chunks, word_count, rank (relevance score), and headline
+        (snippet with matched terms).
     """
     headers = {"Content-Type": "application/json"}
     if VECTOR_API_KEY:
