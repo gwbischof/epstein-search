@@ -115,6 +115,27 @@ def text_search(query: str, n: int = 20, offset: int = 0) -> list[dict]:
     return resp.json()["results"]
 
 @mcp.tool()
+def text_search_count(query: str) -> int:
+    """
+    Count how many document chunks match a keyword query — without returning
+    the actual results. Use this to gauge the size of a result set before
+    paginating through it with text_search.
+
+    Args:
+        query: Search terms (same syntax as text_search).
+
+    Returns:
+        The number of matching chunks.
+    """
+    headers = {"Content-Type": "application/json"}
+    if VECTOR_API_KEY:
+        headers["X-API-Key"] = VECTOR_API_KEY
+    payload = {"query": query}
+    resp = requests.post(f"{VECTOR_URL}/text_search/count", json=payload, headers=headers, timeout=30)
+    resp.raise_for_status()
+    return resp.json()["count"]
+
+@mcp.tool()
 def vector_search(query: str, n: int = 20, offset: int = 0) -> list[dict]:
     """
     Semantic search over Epstein documents using vector embeddings.
@@ -203,9 +224,30 @@ def fuzzy_search(query: str, n: int = 20, offset: int = 0, exclude_exact: bool =
     payload = {"query": query, "limit": min(n, 100), "offset": offset}
     if exclude_exact:
         payload["exclude_exact"] = True
-    resp = requests.post(f"{VECTOR_URL}/fuzzy_search", json=payload, headers=headers, timeout=30)
+    resp = requests.post(f"{VECTOR_URL}/fuzzy_search", json=payload, headers=headers, timeout=180)
     resp.raise_for_status()
     return resp.json()["results"]
+
+@mcp.tool()
+def fuzzy_search_count(query: str) -> int:
+    """
+    Count how many document chunks match a fuzzy/trigram query — without
+    returning the actual results. Use this to gauge the size of a fuzzy
+    result set before paginating through it with fuzzy_search.
+
+    Args:
+        query: Search terms (same syntax as fuzzy_search, typo-tolerant).
+
+    Returns:
+        The number of matching chunks.
+    """
+    headers = {"Content-Type": "application/json"}
+    if VECTOR_API_KEY:
+        headers["X-API-Key"] = VECTOR_API_KEY
+    payload = {"query": query}
+    resp = requests.post(f"{VECTOR_URL}/fuzzy_search/count", json=payload, headers=headers, timeout=180)
+    resp.raise_for_status()
+    return resp.json()["count"]
 
 @mcp.tool()
 def generate_pdf(markdown_path: str, output_path: str | None = None) -> str:
