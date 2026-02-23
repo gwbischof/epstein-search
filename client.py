@@ -159,7 +159,7 @@ class SearchClient:
         Raises:
             requests.HTTPError: 404 if document not found.
         """
-        resp = self.session.get(f"{self.url}/documents/{efta_id}", headers=self._headers(), timeout=30)
+        resp = self.session.get(f"{self.url}/get_document/{efta_id}", headers=self._headers(), timeout=30)
         resp.raise_for_status()
         return resp.json()
 

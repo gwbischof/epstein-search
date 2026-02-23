@@ -108,10 +108,6 @@ Examples:
                 print(doc["text"])
         return
 
-    if not args.query:
-        parser.print_help()
-        sys.exit(1)
-
     if args.similar:
         results = vc.similarity_search(args.similar, chunk_index=args.chunk, limit=args.n)
         if args.json:
@@ -124,6 +120,10 @@ Examples:
                 print(f"  {text}...")
                 print()
         return
+
+    if not args.query:
+        parser.print_help()
+        sys.exit(1)
 
     if args.fuzzy:
         results = vc.fuzzy_search(args.query, limit=args.n, exclude_exact=args.exclude_exact)
