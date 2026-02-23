@@ -1,6 +1,6 @@
 import os
 from mcp.server.fastmcp import FastMCP
-from client import VectorClient
+from client import SearchClient
 from pdf import generate_pdf as _generate_pdf, merge_markdown_to_pdf as _merge_markdown_to_pdf
 
 mcp = FastMCP("epstein-search")
@@ -8,7 +8,7 @@ mcp = FastMCP("epstein-search")
 VECTOR_URL = os.environ.get("VECTOR_URL", "https://vector.korroni.cloud")
 VECTOR_API_KEY = os.environ.get("VECTOR_API_KEY", "")
 
-_vc = VectorClient(url=VECTOR_URL, api_key=VECTOR_API_KEY)
+_vc = SearchClient(url=VECTOR_URL, api_key=VECTOR_API_KEY)
 
 
 @mcp.tool()
@@ -198,8 +198,7 @@ def get_document(efta_id: str) -> dict:
     Returns the full document record including text, metadata, and version.
 
     Use this when you already know the EFTA ID and want the complete document
-    without searching. Faster than extract_text because it reads from the
-    database instead of downloading and parsing the PDF.
+    without searching. Reads from the database instead of downloading the PDF.
 
     Args:
         efta_id: The EFTA document ID (e.g. "EFTA00123456").

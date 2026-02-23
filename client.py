@@ -8,12 +8,12 @@ import tempfile
 import requests
 
 
-class VectorClient:
+class SearchClient:
     """
-    Client for the epstein-vector semantic search API.
+    Client for the Epstein document search API.
 
     Usage:
-        client = VectorClient()
+        client = SearchClient()
         results = client.search("payments to politicians", limit=10)
         for r in results:
             print(r["efta_id"], r["score"], r["text"][:100])

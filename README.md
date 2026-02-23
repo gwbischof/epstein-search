@@ -123,9 +123,9 @@ uv add git+https://git.corroborators.wiki/korroni/epstein-search
 ```
 
 ```python
-from client import VectorClient
+from client import SearchClient
 
-vc = VectorClient()  # defaults to https://vector.korroni.cloud
+vc = SearchClient()  # defaults to https://vector.korroni.cloud
 
 # Keyword search
 for r in vc.text_search("Maxwell flight", limit=10):
@@ -152,7 +152,7 @@ print(vc.text_search_count("Maxwell"))
 print(vc.fuzzy_search_count("Maxwel"))
 
 # Custom server URL
-vc = VectorClient(url="http://localhost:8000", api_key="your-key")
+vc = SearchClient(url="http://localhost:8000", api_key="your-key")
 ```
 
 ## Search Syntax

@@ -12,7 +12,7 @@ Usage:
 import argparse
 import json
 import sys
-from client import VectorClient
+from client import SearchClient
 
 
 def main():
@@ -90,7 +90,7 @@ Examples:
     )
 
     args = parser.parse_args()
-    vc = VectorClient(url=args.vector_url)
+    vc = SearchClient(url=args.vector_url)
 
     if args.doc:
         try:
