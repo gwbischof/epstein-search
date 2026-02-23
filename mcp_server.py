@@ -1,8 +1,6 @@
 import os
-from dataclasses import fields
 from mcp.server.fastmcp import FastMCP
-import requests
-from client import EpsteinClient
+from client import VectorClient
 from pdf import generate_pdf as _generate_pdf, merge_markdown_to_pdf as _merge_markdown_to_pdf
 
 mcp = FastMCP("epstein-search")
@@ -10,19 +8,8 @@ mcp = FastMCP("epstein-search")
 VECTOR_URL = os.environ.get("VECTOR_URL", "https://vector.korroni.cloud")
 VECTOR_API_KEY = os.environ.get("VECTOR_API_KEY", "")
 
-def _parse_queries(query: str) -> list[str]:
-    """Split query on | for OR support."""
-    queries = [q.strip() for q in query.split("|")]
-    return [q for q in queries if q]
+_vc = VectorClient(url=VECTOR_URL, api_key=VECTOR_API_KEY)
 
-def _record_to_dict(r) -> dict:
-    """Convert a Record to a dict with all metadata."""
-    d = {}
-    for f in fields(r):
-        if f.name == "raw":
-            continue
-        d[f.name] = getattr(r, f.name)
-    return d
 
 @mcp.tool()
 def extract_image(
@@ -49,13 +36,27 @@ def extract_image(
         A list of records with metadata and extracted image info. Each image
         entry has path, page, width, height, size, and format fields.
     """
-    client = EpsteinClient()
-    queries = _parse_queries(query)
-    records = client.search(queries, n=n or None, skip=skip)
-    results = []
-    for record in client._extract_images(records, page=page, output_dir=output_dir):
-        results.append(_record_to_dict(record))
-    return results
+    # If it looks like an EFTA ID, fetch directly
+    if query.upper().startswith("EFTA"):
+        images = _vc.extract_images(query, page=page, output_dir=output_dir)
+        doc = _vc.get_document(query)
+        return [{"efta_id": query, "url": doc.get("url", ""), "images": images}]
+
+    # Otherwise search and extract from top results
+    results = _vc.text_search(query, limit=n or 100, offset=skip)
+    output = []
+    seen = set()
+    for r in results:
+        efta_id = r["efta_id"]
+        if efta_id in seen:
+            continue
+        seen.add(efta_id)
+        images = _vc.extract_images(efta_id, page=page, output_dir=output_dir)
+        output.append({"efta_id": efta_id, "images": images})
+        if n and len(output) >= n:
+            break
+    return output
+
 
 @mcp.tool()
 def text_search(query: str, n: int = 20, offset: int = 0) -> list[dict]:
@@ -79,13 +80,8 @@ def text_search(query: str, n: int = 20, offset: int = 0) -> list[dict]:
         total_chunks, word_count, rank (relevance score), and headline
         (snippet with matched terms).
     """
-    headers = {"Content-Type": "application/json"}
-    if VECTOR_API_KEY:
-        headers["X-API-Key"] = VECTOR_API_KEY
-    payload = {"query": query, "limit": min(n, 100), "offset": offset}
-    resp = requests.post(f"{VECTOR_URL}/text_search", json=payload, headers=headers, timeout=30)
-    resp.raise_for_status()
-    return resp.json()["results"]
+    return _vc.text_search(query, limit=n, offset=offset)
+
 
 @mcp.tool()
 def text_search_count(query: str) -> int:
@@ -100,13 +96,8 @@ def text_search_count(query: str) -> int:
     Returns:
         The number of matching chunks.
     """
-    headers = {"Content-Type": "application/json"}
-    if VECTOR_API_KEY:
-        headers["X-API-Key"] = VECTOR_API_KEY
-    payload = {"query": query}
-    resp = requests.post(f"{VECTOR_URL}/text_search/count", json=payload, headers=headers, timeout=30)
-    resp.raise_for_status()
-    return resp.json()["count"]
+    return _vc.text_search_count(query)
+
 
 @mcp.tool()
 def vector_search(query: str, n: int = 20, offset: int = 0) -> list[dict]:
@@ -133,13 +124,8 @@ def vector_search(query: str, n: int = 20, offset: int = 0) -> list[dict]:
         A list of matching text chunks with efta_id, dataset, text,
         and similarity score (0-1, higher is more relevant).
     """
-    headers = {"Content-Type": "application/json"}
-    if VECTOR_API_KEY:
-        headers["X-API-Key"] = VECTOR_API_KEY
-    payload = {"query": query, "limit": min(n, 100), "offset": offset}
-    resp = requests.post(f"{VECTOR_URL}/vector_search", json=payload, headers=headers, timeout=30)
-    resp.raise_for_status()
-    return resp.json()["results"]
+    return _vc.search(query, limit=n, offset=offset)
+
 
 @mcp.tool()
 def similarity_search(efta_id: str, chunk_index: int = 0, n: int = 20, offset: int = 0) -> list[dict]:
@@ -160,13 +146,8 @@ def similarity_search(efta_id: str, chunk_index: int = 0, n: int = 20, offset: i
         A list of similar text chunks with efta_id, dataset, text,
         and similarity score (0-1, higher is more relevant).
     """
-    headers = {"Content-Type": "application/json"}
-    if VECTOR_API_KEY:
-        headers["X-API-Key"] = VECTOR_API_KEY
-    payload = {"efta_id": efta_id, "chunk_index": chunk_index, "limit": min(n, 100), "offset": offset}
-    resp = requests.post(f"{VECTOR_URL}/similarity_search", json=payload, headers=headers, timeout=30)
-    resp.raise_for_status()
-    return resp.json()["results"]
+    return _vc.similarity_search(efta_id, chunk_index=chunk_index, limit=n, offset=offset)
+
 
 @mcp.tool()
 def fuzzy_search(query: str, n: int = 20, offset: int = 0, exclude_exact: bool = False) -> list[dict]:
@@ -191,15 +172,8 @@ def fuzzy_search(query: str, n: int = 20, offset: int = 0, exclude_exact: bool =
         A list of matching chunks with efta_id, dataset, chunk_index,
         total_chunks, text, and similarity (0-1, higher is closer match).
     """
-    headers = {"Content-Type": "application/json"}
-    if VECTOR_API_KEY:
-        headers["X-API-Key"] = VECTOR_API_KEY
-    payload = {"query": query, "limit": min(n, 100), "offset": offset}
-    if exclude_exact:
-        payload["exclude_exact"] = True
-    resp = requests.post(f"{VECTOR_URL}/fuzzy_search", json=payload, headers=headers, timeout=180)
-    resp.raise_for_status()
-    return resp.json()["results"]
+    return _vc.fuzzy_search(query, limit=n, offset=offset, exclude_exact=exclude_exact)
+
 
 @mcp.tool()
 def fuzzy_search_count(query: str) -> int:
@@ -214,13 +188,8 @@ def fuzzy_search_count(query: str) -> int:
     Returns:
         The number of matching chunks.
     """
-    headers = {"Content-Type": "application/json"}
-    if VECTOR_API_KEY:
-        headers["X-API-Key"] = VECTOR_API_KEY
-    payload = {"query": query}
-    resp = requests.post(f"{VECTOR_URL}/fuzzy_search/count", json=payload, headers=headers, timeout=180)
-    resp.raise_for_status()
-    return resp.json()["count"]
+    return _vc.fuzzy_search_count(query)
+
 
 @mcp.tool()
 def get_document(efta_id: str) -> dict:
@@ -238,12 +207,8 @@ def get_document(efta_id: str) -> dict:
     Returns:
         A dict with efta_id, dataset, url, pages, word_count, text, and version.
     """
-    headers = {"Content-Type": "application/json"}
-    if VECTOR_API_KEY:
-        headers["X-API-Key"] = VECTOR_API_KEY
-    resp = requests.get(f"{VECTOR_URL}/documents/{efta_id}", headers=headers, timeout=30)
-    resp.raise_for_status()
-    return resp.json()
+    return _vc.get_document(efta_id)
+
 
 @mcp.tool()
 def generate_pdf(markdown_path: str, output_path: str | None = None) -> str:
@@ -259,6 +224,7 @@ def generate_pdf(markdown_path: str, output_path: str | None = None) -> str:
         The path to the generated PDF file.
     """
     return _generate_pdf(markdown_path, output_path)
+
 
 @mcp.tool()
 def merge_markdown_to_pdf(markdown_paths: list[str], output_path: str) -> str:
@@ -276,8 +242,10 @@ def merge_markdown_to_pdf(markdown_paths: list[str], output_path: str) -> str:
     """
     return _merge_markdown_to_pdf(markdown_paths, output_path)
 
+
 def main():
     mcp.run(transport='stdio')
+
 
 if __name__ == "__main__":
     main()
