@@ -19,6 +19,10 @@ git clone https://github.com/gwbischof/epstein-search
 uv tool install ./epstein-search
 ```
 
+## Configuration
+
+All interfaces default to `https://vector.korroni.cloud`. Set `VECTOR_URL` and `VECTOR_API_KEY` environment variables to use a different server. Each interface also has its own override — see below.
+
 ## CLI
 
 ```bash
@@ -63,7 +67,7 @@ es --version                  # show version
 | `--similar EFTA_ID` | Find documents similar to this one |
 | `--chunk N` | Chunk index for `--similar` (default: 0) |
 | `--doc EFTA_ID` | Fetch a single document by EFTA ID |
-| `--vector-url URL` | Custom API URL (default: `VECTOR_URL` env or `https://vector.korroni.cloud`) |
+| `--vector-url URL` | Custom API URL (overrides `VECTOR_URL` env var, default: `https://vector.korroni.cloud`) |
 
 ## MCP Server
 
@@ -83,7 +87,7 @@ claude mcp add -s user epstein-search \
   -- uvx --from /path/to/epstein-search epstein-search-mcp
 ```
 
-Replace `your-api-key` with a vector search API key. If using a local clone, replace `/path/to/epstein-search` with the actual path.
+Replace `your-api-key` with a vector search API key. To use a different API server, add `-e VECTOR_URL=http://localhost:8000`.
 
 To remove and re-add:
 
@@ -126,7 +130,7 @@ uv add git+https://github.com/gwbischof/epstein-search
 ```python
 from client import SearchClient
 
-vc = SearchClient()  # defaults to https://vector.korroni.cloud
+vc = SearchClient()  # uses VECTOR_URL env var, or defaults to https://vector.korroni.cloud
 
 # Keyword search
 for r in vc.text_search("Maxwell flight", limit=10):
