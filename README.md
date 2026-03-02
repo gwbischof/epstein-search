@@ -11,11 +11,11 @@ Python client, CLI, and MCP server for searching ~1M OCR'd Epstein documents via
 ## Installation
 
 ```bash
-# Install the `es` command globally
-uv tool install git+https://git.corroborators.wiki/korroni/epstein-search
+# Install from GitHub
+uv tool install git+https://github.com/gwbischof/epstein-search
 
 # Or install from a local clone
-git clone https://git.corroborators.wiki/korroni/epstein-search
+git clone https://github.com/gwbischof/epstein-search
 uv tool install ./epstein-search
 ```
 
@@ -72,19 +72,20 @@ An MCP server that gives AI assistants (Claude Code, Claude Desktop, etc.) direc
 ### Setup
 
 ```bash
-# Clone the repo
-git clone https://git.corroborators.wiki/korroni/epstein-search
-cd epstein-search
+# Install from GitHub (no clone needed)
+claude mcp add -s user epstein-search \
+  -e VECTOR_API_KEY=your-api-key \
+  -- uvx --from git+https://github.com/gwbischof/epstein-search epstein-search-mcp
 
-# Install the MCP server into Claude Code
+# Or install from a local clone
 claude mcp add -s user epstein-search \
   -e VECTOR_API_KEY=your-api-key \
   -- uvx --from /path/to/epstein-search epstein-search-mcp
 ```
 
-Replace `/path/to/epstein-search` with the actual path to your clone, and `your-api-key` with a vector search API key.
+Replace `your-api-key` with a vector search API key. If using a local clone, replace `/path/to/epstein-search` with the actual path.
 
-To update, `git pull` and restart Claude Code. To change settings, remove and re-add:
+To remove and re-add:
 
 ```bash
 claude mcp remove -s user epstein-search
@@ -108,8 +109,8 @@ claude mcp remove -s user epstein-search
 ## Updating
 
 ```bash
-# Reinstall from remote
-uv tool install --force --reinstall epstein-search --from git+https://git.corroborators.wiki/korroni/epstein-search
+# Reinstall from GitHub
+uv tool install --force --reinstall epstein-search --from git+https://github.com/gwbischof/epstein-search
 
 # Or from a local clone
 uv tool install --force --reinstall epstein-search --from /path/to/epstein-search
@@ -119,7 +120,7 @@ uv tool install --force --reinstall epstein-search --from /path/to/epstein-searc
 
 ```bash
 # Install as a library
-uv add git+https://git.corroborators.wiki/korroni/epstein-search
+uv add git+https://github.com/gwbischof/epstein-search
 ```
 
 ```python
