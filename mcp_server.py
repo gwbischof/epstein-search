@@ -62,8 +62,7 @@ def extract_image(
 def text_search(query: str, n: int = 20, offset: int = 0) -> list[dict]:
     """
     Keyword search over ~1M OCR'd Epstein documents. This is the default
-    search tool — start here. Use vector_search for meaning-based search,
-    or fuzzy_search to catch OCR errors and misspellings.
+    search tool — start here. Use vector_search for meaning-based search.
 
     Args:
         query: Search terms. Supports:
@@ -147,48 +146,6 @@ def similarity_search(efta_id: str, chunk_index: int = 0, n: int = 20, offset: i
         and similarity score (0-1, higher is more relevant).
     """
     return _vc.similarity_search(efta_id, chunk_index=chunk_index, limit=n, offset=offset)
-
-
-@mcp.tool()
-def fuzzy_search(query: str, n: int = 20, offset: int = 0, exclude_exact: bool = False) -> list[dict]:
-    """
-    Fuzzy trigram search over Epstein document chunks — typo-tolerant
-    matching. Finds documents even when the query or document contains OCR errors
-    or misspellings. For example, "Maxwel" finds "Maxwell", "Ghisliane" finds
-    "Ghislaine". Uses word_similarity to find the best matching substring within
-    each chunk.
-
-    Use this to catch OCR errors and misspellings that text_search misses.
-    Many documents are poorly scanned, so names and terms are often garbled.
-
-    Args:
-        query: Search terms, can include typos (e.g. "Maxwel", "Ghisliane").
-        n: Maximum number of results to return (default: 20, max: 100).
-        offset: Number of results to skip for pagination (default: 0).
-        exclude_exact: If True, exclude documents that keyword search already finds,
-                       showing only fuzzy-only matches (default: False).
-
-    Returns:
-        A list of matching chunks with efta_id, dataset, chunk_index,
-        total_chunks, text, and similarity (0-1, higher is closer match).
-    """
-    return _vc.fuzzy_search(query, limit=n, offset=offset, exclude_exact=exclude_exact)
-
-
-@mcp.tool()
-def fuzzy_search_count(query: str) -> int:
-    """
-    Count how many document chunks match a fuzzy/trigram query — without
-    returning the actual results. Use this to gauge the size of a fuzzy
-    result set before paginating through it with fuzzy_search.
-
-    Args:
-        query: Search terms (same syntax as fuzzy_search, typo-tolerant).
-
-    Returns:
-        The number of matching chunks.
-    """
-    return _vc.fuzzy_search_count(query)
 
 
 @mcp.tool()

@@ -24,7 +24,6 @@ Examples:
     es "maxwell"                          # keyword search (default)
     es "flight logs" -n 100
     es "flight logs" --vector             # semantic search
-    es "Maxwel" --fuzzy                   # typo-tolerant search
     es --similar EFTA00123456             # find similar docs
     es --doc EFTA00123456                 # fetch a single document
     es "epstein" --json > results.json
@@ -57,16 +56,6 @@ Examples:
         type=str,
         default=None,
         help="Vector search API URL (default: VECTOR_URL env or https://vector.korroni.cloud)"
-    )
-    parser.add_argument(
-        "--fuzzy",
-        action="store_true",
-        help="Use fuzzy trigram search (typo-tolerant matching)"
-    )
-    parser.add_argument(
-        "--exclude-exact",
-        action="store_true",
-        help="With --fuzzy, hide documents that keyword search already finds"
     )
     parser.add_argument(
         "--similar",
@@ -124,18 +113,6 @@ Examples:
     if not args.query:
         parser.print_help()
         sys.exit(1)
-
-    if args.fuzzy:
-        results = vc.fuzzy_search(args.query, limit=args.n, exclude_exact=args.exclude_exact)
-        if args.json:
-            print(json.dumps(results, indent=2))
-        else:
-            for r in results:
-                text = r.get("text", "")[:200].replace("\n", " ")
-                print(f"{r['efta_id']}  (dataset {r['dataset']}, {r['similarity']:.1%} match)")
-                print(f"  {text}...")
-                print()
-        return
 
     if args.vector:
         results = vc.search(args.query, limit=args.n)

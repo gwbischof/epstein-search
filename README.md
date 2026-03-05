@@ -37,10 +37,6 @@ es "maxw*"                    # wildcard prefix
 es "payments to politicians" --vector
 es "discussions about underage girls" --vector -n 10
 
-# Fuzzy search (typo-tolerant, catches OCR errors)
-es "Maxwel" --fuzzy
-es "Ghisliane" --fuzzy --exclude-exact
-
 # Find documents similar to a known document
 es --similar EFTA00123456
 es --similar EFTA00123456 --chunk 2
@@ -62,8 +58,6 @@ es --version                  # show version
 | `-j, --json` | Output as JSON |
 | `-V, --version` | Show version |
 | `--vector` | Semantic search (by meaning, not keywords) |
-| `--fuzzy` | Typo-tolerant trigram search |
-| `--exclude-exact` | With `--fuzzy`, hide results that keyword search already finds |
 | `--similar EFTA_ID` | Find documents similar to this one |
 | `--chunk N` | Chunk index for `--similar` (default: 0) |
 | `--doc EFTA_ID` | Fetch a single document by EFTA ID |
@@ -102,8 +96,6 @@ claude mcp remove -s user epstein-search
 | `text_search` | Keyword search — AND, OR, NOT, phrases, wildcards |
 | `text_search_count` | Count matching chunks without returning results |
 | `vector_search` | Semantic search — finds documents by meaning |
-| `fuzzy_search` | Typo-tolerant search — catches OCR errors |
-| `fuzzy_search_count` | Count matching chunks for fuzzy queries |
 | `similarity_search` | Find documents similar to a given document |
 | `get_document` | Fetch a single document by EFTA ID |
 | `extract_image` | Download a PDF and extract embedded images |
@@ -140,10 +132,6 @@ for r in vc.text_search("Maxwell flight", limit=10):
 for r in vc.search("payments to politicians", limit=10):
     print(r["efta_id"], r["score"], r["text"][:100])
 
-# Fuzzy search (typo-tolerant)
-for r in vc.fuzzy_search("Maxwel", limit=10):
-    print(r["efta_id"], r["similarity"], r["text"][:100])
-
 # Find similar documents
 for r in vc.similarity_search("EFTA00123456", limit=10):
     print(r["efta_id"], r["score"], r["text"][:100])
@@ -154,7 +142,6 @@ print(doc["text"])
 
 # Count matching documents
 print(vc.text_search_count("Maxwell"))
-print(vc.fuzzy_search_count("Maxwel"))
 
 # Custom server URL
 vc = SearchClient(url="http://localhost:8000", api_key="your-key")
@@ -177,12 +164,6 @@ vc = SearchClient(url="http://localhost:8000", api_key="your-key")
 Phrase queries as descriptive statements, not questions:
 - Good: `"recruiting underage girls from schools"`, `"payments to silence victims"`
 - Bad: `"did Epstein recruit from schools?"`, `"were victims paid?"`
-
-### Fuzzy Search
-
-Catches OCR errors and misspellings using trigram matching:
-- `"Maxwel"` finds `"Maxwell"`
-- `"Ghisliane"` finds `"Ghislaine"`
 
 ## Disclaimer
 
