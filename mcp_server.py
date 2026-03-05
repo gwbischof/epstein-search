@@ -200,7 +200,19 @@ def merge_markdown_to_pdf(markdown_paths: list[str], output_path: str) -> str:
 
 
 def main():
-    mcp.run(transport='stdio')
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--http", action="store_true", help="Run as HTTP server instead of stdio")
+    parser.add_argument("--host", default="0.0.0.0", help="HTTP host (default: 0.0.0.0)")
+    parser.add_argument("--port", type=int, default=8000, help="HTTP port (default: 8000)")
+    args = parser.parse_args()
+
+    if args.http:
+        path_secret = os.environ.get("MCP_PATH_SECRET", "")
+        path = f"/mcp/{path_secret}" if path_secret else "/mcp"
+        mcp.run(transport="streamable-http", host=args.host, port=args.port, path=path)
+    else:
+        mcp.run(transport='stdio')
 
 
 if __name__ == "__main__":
