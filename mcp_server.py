@@ -3,7 +3,15 @@ from mcp.server.fastmcp import FastMCP
 from client import SearchClient
 from pdf import generate_pdf as _generate_pdf, merge_markdown_to_pdf as _merge_markdown_to_pdf
 
-mcp = FastMCP("epstein-search")
+MCP_PATH_SECRET = os.environ.get("MCP_PATH_SECRET", "")
+_streamable_http_path = f"/mcp/{MCP_PATH_SECRET}" if MCP_PATH_SECRET else "/mcp"
+
+mcp = FastMCP(
+    "epstein-search",
+    host="0.0.0.0",
+    port=8000,
+    streamable_http_path=_streamable_http_path,
+)
 
 VECTOR_URL = os.environ.get("VECTOR_URL", "https://vector.korroni.cloud")
 VECTOR_API_KEY = os.environ.get("VECTOR_API_KEY", "")
@@ -203,14 +211,10 @@ def main():
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--http", action="store_true", help="Run as HTTP server instead of stdio")
-    parser.add_argument("--host", default="0.0.0.0", help="HTTP host (default: 0.0.0.0)")
-    parser.add_argument("--port", type=int, default=8000, help="HTTP port (default: 8000)")
     args = parser.parse_args()
 
     if args.http:
-        path_secret = os.environ.get("MCP_PATH_SECRET", "")
-        path = f"/mcp/{path_secret}" if path_secret else "/mcp"
-        mcp.run(transport="streamable-http", host=args.host, port=args.port, path=path)
+        mcp.run(transport="streamable-http")
     else:
         mcp.run(transport='stdio')
 
